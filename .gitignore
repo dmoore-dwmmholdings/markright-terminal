@@ -4,3 +4,6 @@ spikes/native-parser/target/
 
 spikes/ios-editor/*.xcodeproj/
 spikes/ios-editor/build/
+
+spikes/firebase/*debug.log
+spikes/firebase/.firebase/

@@ -29,3 +29,7 @@ Recovery alternatives have materially different costs: user-held recovery secret
 ## Provisioning decisions to request later
 
 Before production setup: Firebase account/project ownership, region/data residency, monthly spend cap and alerts, authentication providers, retention/deletion policy, encryption/recovery choice, and production versus emulator environment separation. No paid resources or permissions are needed for the current model. Do not use placeholder production credentials, silently provision a project, or treat this ADR as approval to spend.
+
+### Local Firestore Rules evidence
+
+A demo-only loopback emulator now exercises eight actual Rules tests for owner/cross-user isolation, immutable metadata, trusted-only completion records, conditional heads, conflicting writes, tombstones, schema bounds and cross-collection parent isolation. No production setup or deployment occurred. Verified-blob metadata is a server-seeded test stand-in, NOT proof of Cloud Storage finalization or cryptography. Sharing, revocation, rate/cost constraints, batch adversarial cases, real uploads and encryption remain gates. See `spikes/firebase/README.md`; the test executable refuses to run without the exact emulator endpoint.

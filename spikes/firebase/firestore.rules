@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function own(tenant) { return request.auth != null && request.auth.uid == tenant; }
+    function validId(value) { return value is string && value.matches('^[A-Za-z0-9_-]{1,128}$'); }
+    match /tenants/{tenant}/collections/{collection} {
+      function validRevision(r) {
+        return r.keys().hasOnly(['document','parent','blob','tombstone']) && r.keys().hasAll(['document','parent','blob','tombstone'])
+          && validId(r.document) && r.tombstone is bool
+          && (r.parent == null || (validId(r.parent) && get(/databases/$(database)/documents/tenants/$(tenant)/collections/$(collection)/revisions/$(r.parent)).data.document == r.document))
+          && ((r.tombstone && r.blob == null) || (!r.tombstone && validId(r.blob)));
+      }
+      function publishable(document, expected) {
+        let revision = get(/databases/$(database)/documents/tenants/$(tenant)/collections/$(collection)/revisions/$(request.resource.data.revision)).data;
+        return request.resource.data.keys().hasOnly(['revision'])
+          && validId(request.resource.data.revision) && validId(document)
+          && revision.document == document && revision.parent == expected
+          && (revision.tombstone || get(/databases/$(database)/documents/tenants/$(tenant)/collections/$(collection)/verifiedBlobs/$(revision.blob)).data.complete == true);
+      }
+      match /revisions/{revision} {
+        allow read: if own(tenant);
+        allow create: if own(tenant) && validId(revision) && validRevision(request.resource.data);
+        allow update, delete: if false;
+      }
+      match /heads/{document} {
+        allow read: if own(tenant);
+        allow create: if own(tenant) && publishable(document, null);
+        allow update: if own(tenant) && (request.resource.data == resource.data || publishable(document, resource.data.revision));
+        allow delete: if false;
+      }
+      match /verifiedBlobs/{digest} {
+        allow read: if own(tenant);
+        // Only an independently verified trusted finalize service may populate this.
+        allow write: if false;
+      }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
