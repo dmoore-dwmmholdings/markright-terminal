@@ -1,0 +1,39 @@
+name: MarkrightEditorSpike
+options:
+  bundleIdPrefix: com.dwmm.markright.spike
+  deploymentTarget:
+    iOS: '26.0'
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    CODE_SIGNING_ALLOWED: NO
+    GENERATE_INFOPLIST_FILE: YES
+    TARGETED_DEVICE_FAMILY: '1,2'
+targets:
+  MarkrightEditorSpike:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dwmm.markright.spike.editor
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+  MarkrightEditorSpikeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: MarkrightEditorSpike
+  MarkrightEditorSpikeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: MarkrightEditorSpike
+schemes:
+  MarkrightEditorSpike:
+    build:
+      targets:
+        MarkrightEditorSpike: all
+    test:
+      targets: [MarkrightEditorSpikeTests, MarkrightEditorSpikeUITests]

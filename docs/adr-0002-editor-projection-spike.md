@@ -24,3 +24,9 @@ Required next evidence: actual desktop/native iOS selection and multi-line edits
 ### Indexed follow-up
 
 The reusable `createProjection` now builds line and atomic-block indexes once per source/AST snapshot. Selection lookup binary-searches those indexes instead of walking every AST node. A later 1 MB run under shared-machine load measured full parse 3947.92 ms, index construction 98.93 ms, selection p50 0.00129 ms and p95 0.01229 ms. The different parse timings demonstrate machine/load sensitivity, not a parse regression benchmark. Source edits require a new matching source/AST snapshot; never use a stale projection for mutated source. Parsing/index construction still belongs off the interactive path. These figures still exclude actual UI rendering.
+
+### Native iOS simulator interaction evidence
+
+A separate SwiftUI/UITextView interaction spike now builds and runs headlessly on its own iPhone 17 Pro/iOS 26.5 simulator, coordinated with other workers. Three model tests and one XCUITest pass. The UI test verifies active source/preview transitions, literal punctuation preservation through Done/reactivation, unchanged neighboring source and a full fenced-block source editor. An independent source review caught default keyboard transformations and a weak edit-survival assertion; both were corrected and tests rerun.
+
+This is stronger than the earlier macOS storage probe but remains fixture-level. Code/table previews are still source-like; grouping is not the shared parser, structure changes are not reparsed, and cross-block selection/undo, actual IME/VoiceOver, 1 MB input-to-paint, iPad and physical device acceptance remain open. See `spikes/ios-editor/README.md`. No physical devices, user documents or production services were touched.

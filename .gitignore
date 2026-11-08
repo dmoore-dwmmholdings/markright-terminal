@@ -1,3 +1,6 @@
 node_modules/
 
 spikes/native-parser/target/
+
+spikes/ios-editor/*.xcodeproj/
+spikes/ios-editor/build/
