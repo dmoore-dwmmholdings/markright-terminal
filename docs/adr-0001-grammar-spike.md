@@ -72,3 +72,7 @@ Tentative preference is comrak for a native AST candidate, pending native range 
 ### Source ownership hardening
 
 Self-review found two gaps not caught by the initial corpus: column-zero directive text inside multiline inline-code/emphasis/link spans could be misread as a block directive, and standalone CR lines did not share CommonMark's line-ending handling. The adapter now masks inline-owned ranges for block scanning; scanner, file-node locations and editor indexes support LF, CRLF and CR without normalization. Regression tests plus a 200-case deterministic mixed Unicode/Markdown/directive corpus check source preservation and bounded coordinates. These checks improve safety but are not exhaustive fuzzing or independent review.
+
+### Native source-map evidence
+
+`cargo test --locked --manifest-path spikes/native-parser/Cargo.toml` now verifies three mapping probes. Comrak uses one-based UTF-8 byte columns with inclusive end positions; the editor contract uses zero-based UTF-16 half-open ranges. Unicode strong-span fixtures round-trip across LF, CRLF and CR, and mid-scalar byte positions are rejected rather than rounded. Auditing all CommonMark fixtures maps 3,301 native AST spans to bounded scalar-aligned source ranges; six spans have unspecified/zero positions and must remain explicitly unmappable, not be guessed. This validates coordinate arithmetic for the pinned corpus, not source identity after edits or a Swift FFI implementation.
