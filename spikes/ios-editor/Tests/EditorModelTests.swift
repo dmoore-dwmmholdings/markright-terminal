@@ -26,13 +26,28 @@ import UIKit
             model.composing = composing; model.update(0, source)
         }
         view.delegate = coordinator
+        view.selectedRange = NSRange(location: 1, length: 0)
         view.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0))
         XCTAssertNotNil(view.markedTextRange)
         coordinator.textViewDidChange(view)
         XCTAssertTrue(model.composing); model.finish(); XCTAssertEqual(model.active, 0)
         view.unmarkText(); coordinator.textViewDidChangeSelection(view)
-        XCTAssertFalse(model.composing); XCTAssertEqual(model.source, view.text)
+        XCTAssertFalse(model.composing); XCTAssertEqual(model.source, "sにource")
         model.finish(); XCTAssertNil(model.active)
+    }
+
+    func testComposingEditorTeardownCommitsSourceAndClearsGuard() {
+        let model = EditorModel(source: "source"); model.activate(0)
+        let view = UITextView(); view.text = "source"
+        let coordinator = NativeSourceEditor.Coordinator { source, composing in
+            model.composing = composing; model.update(0, source)
+        }
+        view.delegate = coordinator; view.selectedRange = NSRange(location: 1, length: 0)
+        view.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0))
+        coordinator.textViewDidChange(view); XCTAssertTrue(model.composing)
+        NativeSourceEditor.dismantleUIView(view, coordinator: coordinator)
+        XCTAssertNil(view.markedTextRange); XCTAssertFalse(model.composing)
+        XCTAssertEqual(model.source, "sにource"); model.finish(); XCTAssertNil(model.active)
     }
 
 }

@@ -74,9 +74,19 @@ struct NativeSourceEditor: UIViewRepresentable {
         // Avoid selection resets and marked-text replacement during SwiftUI updates.
         if view.markedTextRange == nil && view.text != value { view.text = value }
     }
+    static func dismantleUIView(_ view: UITextView, coordinator: Coordinator) {
+        coordinator.finishComposition(view)
+        view.delegate = nil
+    }
     @MainActor final class Coordinator: NSObject, UITextViewDelegate {
         var onChange: (String, Bool) -> Void
         init(onChange: @escaping (String, Bool) -> Void) { self.onChange = onChange }
+        func finishComposition(_ textView: UITextView) {
+            // Native teardown commits visible marked text before the view disappears.
+            textView.unmarkText()
+            onChange(textView.text, false)
+        }
+        func textViewDidEndEditing(_ textView: UITextView) { finishComposition(textView) }
         func textViewDidChange(_ textView: UITextView) { onChange(textView.text, textView.markedTextRange != nil) }
         func textViewDidChangeSelection(_ textView: UITextView) {
             if textView.markedTextRange == nil { onChange(textView.text, false) }
