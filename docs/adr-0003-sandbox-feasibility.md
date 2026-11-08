@@ -25,3 +25,7 @@ Recommendation: keep downloaded document scripts inert on iOS until runtime and 
 ## Remaining gates
 
 Prove worker/process termination, heap/output/job limits, schema validation, host API capability absence, trust invalidation and deterministic input handling. Compare native QuickJS/JavaScriptCore constraints, measure startup/footprint and Swift interoperability, test on device, and resolve current distribution interpretation. Any declarative fallback must preserve portability and clearly label unsupported computations. MRK-R10/R11/R12/R16 remain unaccepted.
+
+### Killable-boundary proof
+
+A separate Node worker initializes QuickJS with no cooperative interrupt handler and runs an endless guest loop. The parent waits for readiness and explicitly terminates the worker; the test verifies exit and a two-second termination upper bound. This passes and closes the narrow desktop-host feasibility question of stopping a noncooperating WASM guest. It is not an implementation of document trust, output validation, IPC quotas, mobile termination or an OS process sandbox. Worker startup/hard-deadline policy remains to be integrated. Under shared-machine load, cooperative allocation teardown also reached roughly 626 ms, reinforcing that its 100 ms callback deadline cannot be presented as a hard bound.
