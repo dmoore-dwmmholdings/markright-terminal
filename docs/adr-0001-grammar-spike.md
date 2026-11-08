@@ -37,3 +37,7 @@ Flattening is not a lexical replacement. It uses parsed subtrees with source ori
 ## Evidence and remaining gates
 
 12 local Node tests initially pass: opt-in isolation, exact CRLF/Unicode offsets, code-fence suppression, escaping/indentation, snippet origin, duplicate IDs, inert script/data, malformed and unknown directives, quotas. These are scanner tests, not CommonMark/GFM or renderer conformance. Next: selected parser fixture adapter, quote/list/fence contexts, inline file grammar and round-trip integration. MRK-8 must remain open until parser comparison is executable, source-map/escaping contracts are frozen and findings are published. No MRK requirement is marked implemented from this slice.
+
+### Executable reference adapter follow-up
+
+Pinned `unified` 11.0.5, `remark-parse` 11.0.0 and `remark-gfm` 4.0.1 with a committed npm lockfile; install scripts disabled. Reference adapter uses parsed root block ownership before extension scanning, excluding ordinary code/list/quote/HTML/table blocks. It never renders HTML, accesses files or executes scripts. Nineteen local tests now pass, including actual GFM AST constructs and container/source-range integration. This resolves the unrestricted top-level scanner's context gap for tested cases, not every CommonMark example. Extension grammar and typed inline cards are still provisional; exhaustive upstream conformance, native parser comparison and source map fuzzing remain incomplete. The raw scanner is internal spike support, not an independently safe Markdown processor.
