@@ -44,3 +44,11 @@ test('native browser composition commits exact text without duplicate source',as
  await cdp.send('Input.insertText',{text:'日本語'});
  await expect.poll(()=>page.evaluate(()=>spike.source())).toBe('fi日本語rst\nsecond');
 });
+test('atomic EOF boundaries reveal the complete block but not a following empty line',async({page})=>{
+ for(const source of ['```js\nx\n```','|a|b|\n|-|-|\n|x|y|']){
+  const active=await page.evaluate(source=>{spike.setSource(source);spike.select(source.length);return spike.active();},source);
+  expect(active.from).toBe(0);expect(active.to).toBe(source.length);
+  const empty=await page.evaluate(source=>{spike.setSource(source+'\n');spike.select(source.length+1);return spike.active();},source);
+  expect(empty.from).toBe(source.length+1);
+ }
+});

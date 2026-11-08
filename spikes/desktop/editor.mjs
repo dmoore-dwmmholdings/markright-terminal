@@ -9,8 +9,13 @@ function activeSource(view){
  const selection=view.state.selection.main;
  let from=view.state.doc.lineAt(selection.from).from,to=view.state.doc.lineAt(selection.to>selection.from?selection.to-1:selection.to).to;
   for(const position of [selection.from,selection.to>selection.from?selection.to-1:selection.to]){
-  let node=syntaxTree(view.state).resolveInner(position,1);
-  for(;node;node=node.parent)if(['FencedCode','CodeBlock','Table'].includes(node.name)){from=Math.min(from,node.from);to=Math.max(to,node.to);}
+  for(const side of [-1,1]){
+   let node=syntaxTree(view.state).resolveInner(position,side);
+   for(;node;node=node.parent){
+    const inside=position<node.to||(position===node.to&&view.state.doc.lineAt(position).from<position);
+    if(inside&&['FencedCode','CodeBlock','Table'].includes(node.name)){from=Math.min(from,node.from);to=Math.max(to,node.to);}
+   }
+  }
  }
  return {from,to};
 }

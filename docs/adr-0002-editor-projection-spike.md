@@ -39,6 +39,8 @@ Review identified a lazy-view teardown risk for composing text. Explicit teardow
 
 ### Desktop editor candidate evidence
 
-A local CodeMirror/Lezer candidate now passes thirteen headless Chromium/WebKit checks on this Mac, with one Chromium-specific composition probe explicitly skipped on WebKit. Tests exercise source-preserving preview decoration, literal punctuation, enclosing code/table source editing, inert HTML-shaped text, cross-block undo and a 1 MB edit smoke. Prose keyboard transformations are disabled. No browser window, website publication or desktop shell was launched.
+A local CodeMirror/Lezer candidate now passes fifteen headless Chromium/WebKit checks on this Mac, with one Chromium-specific composition probe explicitly skipped on WebKit. Tests exercise source-preserving preview decoration, literal punctuation, enclosing code/table source editing, inert HTML-shaped text, cross-block undo and a 1 MB edit smoke. Prose keyboard transformations are disabled. No browser window, website publication or desktop shell was launched.
 
 This favors a source-native editor candidate over treating rich-text output as the authoritative document, but it does not freeze CodeMirror/Tauri. Rendering is partial, primary-selection-only, and separate from the tentative native Comrak core. Physical Windows/Linux, real webview shell integration, screen readers/OS IME and p95 input-to-paint remain gates. Browser test durations are not latency acceptance.
+
+Desktop review reproduced a caret-at-atomic-block-end defect in both engines. Boundary regressions now cover fences/tables at EOF and following empty lines; two-sided node resolution fixes the gap without broadening the subsequent empty line. Fifteen browser checks pass; the WebKit CDP composition case remains explicitly skipped.
