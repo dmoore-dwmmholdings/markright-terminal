@@ -13,3 +13,4 @@ test('empty last line remains editable',()=>{const r=reveal('a\n',2);assert.equa
 test('IME composition defers projection without replacing source',()=>assert.deepEqual(reveal('text',2,2,{composing:true}),{deferred:true}));
 test('invalid selections and split emoji surrogate pairs reject',()=>{for(const p of [-1,1,4])assert.throws(()=>reveal('😀x',p),RangeError);assert.equal(reveal('😀x',2).selection.start,2);});
 test('empty first line retains zero origin',()=>assert.equal(reveal('\ntext',0).start,0));
+test('standalone CR line boundaries retain exact source',()=>{const s='a\rb\rc';const r=reveal(s,2);assert.equal(s.slice(r.start,r.end),'b\r');});

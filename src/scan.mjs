@@ -7,9 +7,9 @@ export function scan(source, {extension = '.mrk', maxBytes = 1048576} = {}) {
   if (extension !== '.mrk') return {source, nodes, diagnostics};
   let offset = 0, fence = null, snippet = null;
   const ids = new Set();
-  const lines = source.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+  const lines = source.match(/[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+$/g) ?? [];
   for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i], text = raw.replace(/\r?\n$/, ''), end = offset + raw.length;
+    const raw = lines[i], text = raw.replace(/(?:\r\n|\r|\n)$/, ''), end = offset + raw.length;
     const loc = {line: i + 1, start: offset, end};
     if (fence) {
       const close = text.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);

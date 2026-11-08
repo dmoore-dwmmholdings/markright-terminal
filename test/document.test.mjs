@@ -44,3 +44,13 @@ test('many inline cards retain line offsets without repeated prefix scans', () =
     assert.equal(source.slice(result.nodes[i].start,result.nodes[i].end),`:file[item${i}]{src="./${i}.pdf"}`);
   }
 });
+test('multiline inline constructs cannot expose block directives',()=>{
+ for(const wrap of [s=>'`first\n'+s+'\nlast`',s=>'*first\n'+s+'\nlast*',s=>'[first\n'+s+'\nlast](./x)']){
+  const r=analyze(wrap('::include{src="x"}'));assert.equal(r.nodes.length,0);assert.equal(r.diagnostics.length,0);
+ }
+});
+test('lone CR documents preserve directive and card positions',()=>{
+ const source='first\r::include{src="x"}\r\r:file[Board]{src="x"}';const r=analyze(source);
+ assert.equal(r.source,source);assert.deepEqual(r.nodes.map(n=>[n.type,n.line]),[['include',2],['file',4]]);
+ for(const n of r.nodes)assert.ok(source.slice(n.start,n.end).startsWith(n.type==='file'?':file':'::include'));
+});

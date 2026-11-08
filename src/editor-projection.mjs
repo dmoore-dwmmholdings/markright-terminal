@@ -1,7 +1,7 @@
 /** Experimental projection planner. Source is authoritative; no widgets or rendering. */
 export function createProjection(source, markdown) {
   const lines=[0], blocks=[];
-  for(let i=0;i<source.length;i++)if(source[i]==='\n')lines.push(i+1);
+  for(let i=0;i<source.length;i++){if(source[i]==='\r'){if(source[i+1]==='\n')i++;lines.push(i+1);}else if(source[i]==='\n')lines.push(i+1);}
   function visit(node){
     if(['table','code'].includes(node.type))blocks.push([node.position.start.offset,node.position.end.offset]);
     for(const child of node.children??[])visit(child);

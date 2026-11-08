@@ -13,7 +13,13 @@ export function analyze(source, options = {}) {
   for (const node of markdown.children) {
     const isExtensionFence = node.type === 'code' && ['markright-data','markright-js'].includes(node.lang);
     if (node.type !== 'paragraph' && !isExtensionFence) blocked.push([node.position.start.offset,node.position.end.offset]);
+    // Multiline inline constructs own their contents too: a column-zero line
+    // inside a link, emphasis, inline-code or HTML span is not a block directive.
+    if(node.type==='paragraph')for(const child of node.children??[]){
+      if(child.type!=='text'&&child.type!=='break')blocked.push([child.position.start.offset,child.position.end.offset]);
+    }
   }
+  blocked.sort((a,b)=>a[0]-b[0]);
   let masked = '', cursor = 0;
   for (const [start,end] of blocked) {
     masked += source.slice(cursor,start) + source.slice(start,end).replace(/[^\r\n]/g,' '); cursor=end;
@@ -21,7 +27,7 @@ export function analyze(source, options = {}) {
   masked += source.slice(cursor);
   const result=scan(masked, options);
   const lineStarts = [0];
-  for (let i=0;i<source.length;i++) if(source[i]==='\n') lineStarts.push(i+1);
+  for (let i=0;i<source.length;i++) {if(source[i]==='\r'){if(source[i+1]==='\n')i++;lineStarts.push(i+1);}else if(source[i]==='\n')lineStarts.push(i+1);}
   function lineAt(offset) {
     let lo=0, hi=lineStarts.length;
     while(lo<hi) { const mid=(lo+hi)>>>1; if(lineStarts[mid]<=offset)lo=mid+1;else hi=mid; }
