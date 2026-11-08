@@ -1,0 +1,20 @@
+# Register decoder
+
+This prose remains readable without any runtime.
+
+```markright-data id="register"
+{"width":64,"fields":[{"name":"enable","lsb":0,"width":1},{"name":"mode","lsb":1,"width":3}]}
+```
+
+```markright-js id="decoder" inputs="register"
+// Inert proposal only: this file does not execute in the spike.
+return ui.text('Decoder runtime is not implemented');
+```
+
+:::snippet{id="power"}
+## Power
+
+[Board](./assets/board.pdf)
+:::
+
+::include{src="./shared.mrk#snippet=limits" headingOffset="1"}
