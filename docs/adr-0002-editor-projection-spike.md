@@ -36,3 +36,9 @@ This is stronger than the earlier macOS storage probe but remains fixture-level.
 The isolated phone and iPad simulators each pass four native tests plus two UI tests. Added a real UIKit marked-range/coordinator probe (not real keyboard IME) and a 1,000,000-byte lazy-row fixture that can enter editing, type, preview and re-enter without losing the source. This is an interaction smoke, not measured p95 paint latency; broad accessibility, cross-block undo/selection and full Markdown grouping/rendering remain gates. Both dedicated simulators were shut down after use.
 
 Review identified a lazy-view teardown risk for composing text. Explicit teardown/end-edit handling now commits visible marked text and clears the guard. A phone native test exercises that path with exact expected source; five native plus two UI tests pass on phone. Real keyboard composition while scrolling away/returning remains a separate gate, and the iPad run predates the final teardown addition.
+
+### Desktop editor candidate evidence
+
+A local CodeMirror/Lezer candidate now passes thirteen headless Chromium/WebKit checks on this Mac, with one Chromium-specific composition probe explicitly skipped on WebKit. Tests exercise source-preserving preview decoration, literal punctuation, enclosing code/table source editing, inert HTML-shaped text, cross-block undo and a 1 MB edit smoke. Prose keyboard transformations are disabled. No browser window, website publication or desktop shell was launched.
+
+This favors a source-native editor candidate over treating rich-text output as the authoritative document, but it does not freeze CodeMirror/Tauri. Rendering is partial, primary-selection-only, and separate from the tentative native Comrak core. Physical Windows/Linux, real webview shell integration, screen readers/OS IME and p95 input-to-paint remain gates. Browser test durations are not latency acceptance.

@@ -7,3 +7,5 @@ spikes/ios-editor/build/
 
 spikes/firebase/*debug.log
 spikes/firebase/.firebase/
+
+spikes/desktop/build/

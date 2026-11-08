@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'.',testMatch:'editor.spec.mjs',workers:1,use:{baseURL:'http://127.0.0.1:18790',headless:true},webServer:{command:'node server.mjs',url:'http://127.0.0.1:18790',reuseExistingServer:false},outputDir:'./build/test-results',projects:[{name:'chromium',use:{browserName:'chromium'}},{name:'webkit',use:{browserName:'webkit'}}]});
