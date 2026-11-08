@@ -58,3 +58,13 @@ Line positions use a single line-start index and binary search rather than resca
 `cargo run --locked --manifest-path spikes/native-parser/Cargo.toml` repeats the same 652 CommonMark examples using pinned pulldown-cmark 0.13.6, with optional `-- --diffs` for inert JSON diagnostic output. All event ranges are checked as bounded UTF-8 byte offsets at character boundaries. It produces 630 exact HTML-string matches. Inspection of the 22 differences shows 21 quote-serialization variants (`"` versus `&quot;` in text) and one newline formatting difference before a raw HTML block in a list (example 175). These are not evidence of 22 Markdown interpretation defects. No blanket normalization has been applied: exact expected difference IDs are checked to detect drift. Production rendering still requires sanitization independently.
 
 The parser provides useful byte ranges, but converting them to native editor positions, matching GFM behavior, handling extension ASTs, comparing comrak, and validating Swift integration remain gates. This evidence supports retaining pulldown-cmark as a candidate rather than selecting the final core. Cargo lockfile is committed; no production runtime added.
+
+### Cross-parser GFM findings
+
+Pinned comrak 0.59.0 passes all 652 CommonMark examples exactly. The 24 GFM extension examples are separately pinned to cmark-gfm commit 27d942c8; base CommonMark remains 0.31.2 rather than silently reverting to GFM's older baseline. Both Rust candidates and micromark now run that subset. Exact known-difference lists are regression assertions, not claims of complete conformance.
+
+- micromark GFM: 21/24 exact. Two checkbox serialization differences; one genuine policy difference: no bare `ftp://` autolinking (example 628).
+- comrak: 21/24 exact. Two checkbox serialization differences; raw HTML tag filtering differs in the deliberately unsafe fixture comparison mode (652). This is not a production safe-render configuration.
+- pulldown-cmark: 3/24 exact. Table/checkbox serialization contributes differences, but bare GFM autolinks are absent, including www, HTTP and email examples, and raw tag filtering differs. `ENABLE_GFM` does not supply complete GFM support by itself.
+
+Tentative preference is comrak for a native AST candidate, pending native range mapping and Swift/UI measurements. Do not choose pulldown merely for ranges without budgeting missing autolink behavior. Define whether bare FTP links are supported in the frozen Markright contract; do not let JavaScript/native disagreement silently decide it. Regardless of parser, production HTML is not passed through: use safe native/render nodes and explicit URL policy. No renderer security assurance follows from these string tests.

@@ -1,1 +1,1 @@
-{"name":"markright-terminal","version":"0.0.0","private":true,"type":"module","scripts":{"test":"node --test"},"engines":{"node":">=22"},"dependencies":{"remark-gfm":"4.0.1","remark-parse":"11.0.0","unified":"11.0.5"},"devDependencies":{"micromark":"4.0.3"}}
+{"name":"markright-terminal","version":"0.0.0","private":true,"type":"module","scripts":{"test":"node --test"},"engines":{"node":">=22"},"dependencies":{"remark-gfm":"4.0.1","remark-parse":"11.0.0","unified":"11.0.5"},"devDependencies":{"micromark":"4.0.3","micromark-extension-gfm":"3.0.0"}}

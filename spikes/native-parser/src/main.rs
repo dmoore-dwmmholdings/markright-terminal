@@ -1,5 +1,71 @@
 use pulldown_cmark::{Options, Parser, html};
+fn compare_comrak() {
+    let cases: serde_json::Value =
+        serde_json::from_str(include_str!("../../../fixtures/commonmark-0.31.2.json")).unwrap();
+    let mut options = comrak::Options::default();
+    options.render.r#unsafe = true;
+    let mut failed = Vec::new();
+    for c in cases.as_array().unwrap() {
+        let actual = comrak::markdown_to_html(c["markdown"].as_str().unwrap(), &options);
+        if actual != c["html"].as_str().unwrap() {
+            failed.push(c["example"].as_u64().unwrap());
+        }
+    }
+    assert!(failed.is_empty(), "comrak CommonMark drift");
+    println!(
+        "comrak 0.59.0 CommonMark exact {}/652; nonmatches: {:?}",
+        652 - failed.len(),
+        failed
+    );
+    let cases: serde_json::Value =
+        serde_json::from_str(include_str!("../../../fixtures/gfm-0.29.json")).unwrap();
+    options.extension.table = true;
+    options.extension.strikethrough = true;
+    options.extension.autolink = true;
+    options.extension.tasklist = true;
+    for parser in ["comrak", "pulldown"] {
+        let mut failed = Vec::new();
+        for c in cases.as_array().unwrap() {
+            let source = c["markdown"].as_str().unwrap();
+            let actual = if parser == "comrak" {
+                comrak::markdown_to_html(source, &options)
+            } else {
+                let mut out = String::new();
+                let flags = Options::ENABLE_TABLES
+                    | Options::ENABLE_STRIKETHROUGH
+                    | Options::ENABLE_TASKLISTS
+                    | Options::ENABLE_GFM;
+                html::push_html(&mut out, Parser::new_ext(source, flags));
+                out
+            };
+            if actual != c["html"].as_str().unwrap() {
+                failed.push(c["example"].as_u64().unwrap());
+                if std::env::args().any(|a| a == "--diffs") {
+                    println!(
+                        "{}",
+                        serde_json::json!({"parser":parser,"example":c["example"],"expected":c["html"],"actual":actual})
+                    );
+                }
+            }
+        }
+        let expected = if parser == "comrak" {
+            vec![279, 280, 652]
+        } else {
+            vec![
+                198, 199, 200, 201, 202, 204, 205, 279, 280, 621, 622, 623, 624, 625, 626, 627,
+                628, 629, 630, 631, 652,
+            ]
+        };
+        assert_eq!(failed, expected, "GFM comparison drift requires review");
+        println!(
+            "{parser} GFM extension exact {}/24; nonmatches: {:?}",
+            24 - failed.len(),
+            failed
+        );
+    }
+}
 fn main() {
+    compare_comrak();
     let cases: serde_json::Value =
         serde_json::from_str(include_str!("../../../fixtures/commonmark-0.31.2.json")).unwrap();
     let mut passed = 0;
