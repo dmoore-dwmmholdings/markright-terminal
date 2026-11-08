@@ -45,3 +45,9 @@ Pinned `unified` 11.0.5, `remark-parse` 11.0.0 and `remark-gfm` 4.0.1 with a com
 ### CommonMark corpus qualification
 
 The pinned micromark 4.0.3 reference compiler passes all 652 upstream CommonMark 0.31.2 examples exactly as HTML strings. Every source also passes extension-opaque `.md` parsing and AST range checks. Normative fixture-only comparison allows raw HTML/URLs as strings and never renders them; production safe output remains separate. Corpus hash/license provenance is recorded in fixtures/NOTICE.md. Twenty-one test groups pass on the Mac. This validates the selected JavaScript reference baseline, not Rust/Swift parity or every GFM extension example.
+
+### Typed-file reference checkpoint
+
+The reference adapter now recognizes proposed inline `:file[label]{src="./path" display="card"}` syntax in Markdown text nodes. `display` may be `card` or `inline` (default `card`). Labels in this initial grammar are nonempty plain text without escapes; attributes are deliberately strict. Code, HTML, existing links, and images cannot contain active file cards. Odd-backslash escapes are preserved; no file is opened and no URL is fetched. These nodes are syntax records only, not safe/resolved file references. Path confinement, symlinks, URI schemes, filesystem capabilities, and native parser parity remain implementation gates.
+
+Line positions use a single line-start index and binary search rather than rescanning every source prefix. The 2,000-card CRLF fixture verifies every source slice and line. Current evidence: 25 passing test groups, including all 652 upstream CommonMark examples. This is still an experimental grammar spike, not an implemented renderer or shipped language contract.

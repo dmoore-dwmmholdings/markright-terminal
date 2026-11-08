@@ -23,3 +23,24 @@ test('extension fences survive parser integration with original ranges',()=>{
 test('Markdown mode retains extension syntax with no interpreted nodes',()=>assert.equal(analyze('::include{src="a"}',{extension:'.md'}).nodes.length,0));
 test('fenced snippets do not open regions',()=>assert.equal(analyze('```\n:::snippet{id="x"}\n```').diagnostics.length,0));
 test('limits apply before Markdown parsing',()=>assert.throws(()=>analyze('😀',{maxBytes:3}),RangeError));
+test('typed file cards are source-mapped but never resolved',()=>{
+ const s='😀 :file[Board]{src="./board%20one.pdf" display="card"}';const n=analyze(s).nodes[0];
+ assert.equal(n.type,'file');assert.equal(n.src,'./board%20one.pdf');assert.equal(s.slice(n.start,n.end),':file[Board]{src="./board%20one.pdf" display="card"}');
+});
+test('file cards honor escapes, code, and link nesting',()=>{
+ for(const s of ['\\:file[Board]{src="a"}','`:file[Board]{src="a"}`','[:file[Board]{src="a"}](https://example.com)','```\n:file[Board]{src="a"}\n```']) assert.equal(analyze(s).nodes.length,0,s);
+ assert.equal(analyze('\\\\:file[Board]{src="a"}').nodes.length,1);
+});
+test('malformed complete cards diagnose and retain source',()=>{
+ const s=':file[Board]{src="a" execute="true"}';const r=analyze(s);assert.equal(r.nodes.length,0);assert.equal(r.diagnostics[0].code,'invalid-file-card');assert.equal(r.source,s);
+});
+
+test('many inline cards retain line offsets without repeated prefix scans', () => {
+  const source=Array.from({length:2000},(_,i)=>`:file[item${i}]{src="./${i}.pdf"}`).join('\r\n');
+  const result=analyze(source);
+  assert.equal(result.nodes.length,2000);
+  for(let i=0;i<2000;i++) {
+    assert.equal(result.nodes[i].line,i+1);
+    assert.equal(source.slice(result.nodes[i].start,result.nodes[i].end),`:file[item${i}]{src="./${i}.pdf"}`);
+  }
+});
