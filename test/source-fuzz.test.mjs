@@ -10,6 +10,6 @@ test('deterministic mixed-syntax corpus preserves bounded source coordinates',()
    assert.ok(Number.isInteger(item.start)&&Number.isInteger(item.end));assert.ok(item.start>=0&&item.start<=item.end&&item.end<=source.length);
   }
   const reveal=createProjection(source,result.markdown);
-  for(const offset of [0,source.length]){const r=reveal({start:offset,end:offset});assert.ok(r.start<=offset&&r.end>=offset);assert.ok(r.start>=0&&r.end<=source.length);}
+  for(const offset of [0,source.length,...Array.from({length:10},()=>random()%(source.length+1))].filter(offset=>!(offset>0&&offset<source.length&&/[\uD800-\uDBFF]/.test(source[offset-1])&&/[\uDC00-\uDFFF]/.test(source[offset])))){const r=reveal({start:offset,end:offset});assert.ok(r.start<=offset&&r.end>=offset);assert.ok(r.start>=0&&r.end<=source.length);}
  }
 });

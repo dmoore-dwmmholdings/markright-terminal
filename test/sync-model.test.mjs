@@ -13,3 +13,12 @@ test('delete versus offline edit never resurrects silently',()=>{
 });
 test('tenant and document identity cannot share blobs or revision parents',()=>{const m=base();assert.equal(m.head('other','d'),null);assert.throws(()=>m.putRevision('other','d',{id:'x',parent:'r0',blob:'b0'}),/Unknown/);m.putRevision('other','d',{id:'x',blob:'b0'});assert.throws(()=>m.promote('other','d','x',null),/Incomplete/);assert.throws(()=>m.promote('u','other','r0',null),/Missing/);});
 test('caller cannot mutate stored revision after upload',()=>{const m=base();const r=m.revision('u','d','r0');assert.throws(()=>{r.blob='evil';},TypeError);assert.equal(m.revision('u','d','r0').blob,'b0');});
+test('all edit/edit/delete publication orders preserve one winner and every candidate',()=>{
+ const permutations=items=>items.length===0?[[]]:items.flatMap((x,i)=>permutations(items.filter((_,j)=>j!==i)).map(rest=>[x,...rest]));
+ for(const order of permutations(['a','b','deleted'])){
+  const m=base();edit(m,'a');edit(m,'b');m.putRevision('u','d',{id:'deleted',parent:'r0',tombstone:true});
+  const results=order.map(id=>m.promote('u','d',id,'r0'));
+  assert.deepEqual(results.map(r=>r.status),['published','conflict','conflict']);assert.equal(m.head('u','d'),order[0]);
+  for(const id of order)assert.ok(m.revision('u','d',id));
+ }
+});
