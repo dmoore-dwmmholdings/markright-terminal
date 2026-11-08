@@ -45,7 +45,7 @@ export function analyze(source, options = {}) {
     if(['paragraph','heading','tableCell'].includes(node.type)){
       const protectedRanges=[];
       function protect(child){
-        if(['inlineCode','html','link','image','definition'].includes(child.type)){
+        if(['inlineCode','html','link','image','linkReference','imageReference','definition'].includes(child.type)){
           protectedRanges.push([child.position.start.offset,child.position.end.offset]);return;
         }
         for(const c of child.children??[])protect(c);

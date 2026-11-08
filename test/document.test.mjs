@@ -67,3 +67,8 @@ test('file cards parse raw syntax despite inline Markdown/autolink splitting',()
 test('reference-link definitions cannot steal a file-card label',()=>{
  const s=':file[Board]{src="./board.pdf"}\n\n[Board]: https://example.com';const r=analyze(s);assert.equal(r.nodes[0]?.src,'./board.pdf');assert.deepEqual(r.diagnostics,[]);
 });
+test('existing reference links and images own nested card-shaped text',()=>{
+ for(const prefix of ['', '!']){
+  const s=`${prefix}[outer :file[Board]{src="x"}][r]\n\n[r]: https://example.com`;assert.equal(analyze(s).nodes.length,0);
+ }
+});
