@@ -41,3 +41,7 @@ Flattening is not a lexical replacement. It uses parsed subtrees with source ori
 ### Executable reference adapter follow-up
 
 Pinned `unified` 11.0.5, `remark-parse` 11.0.0 and `remark-gfm` 4.0.1 with a committed npm lockfile; install scripts disabled. Reference adapter uses parsed root block ownership before extension scanning, excluding ordinary code/list/quote/HTML/table blocks. It never renders HTML, accesses files or executes scripts. Nineteen local tests now pass, including actual GFM AST constructs and container/source-range integration. This resolves the unrestricted top-level scanner's context gap for tested cases, not every CommonMark example. Extension grammar and typed inline cards are still provisional; exhaustive upstream conformance, native parser comparison and source map fuzzing remain incomplete. The raw scanner is internal spike support, not an independently safe Markdown processor.
+
+### CommonMark corpus qualification
+
+The pinned micromark 4.0.3 reference compiler passes all 652 upstream CommonMark 0.31.2 examples exactly as HTML strings. Every source also passes extension-opaque `.md` parsing and AST range checks. Normative fixture-only comparison allows raw HTML/URLs as strings and never renders them; production safe output remains separate. Corpus hash/license provenance is recorded in fixtures/NOTICE.md. Twenty-one test groups pass on the Mac. This validates the selected JavaScript reference baseline, not Rust/Swift parity or every GFM extension example.
