@@ -14,7 +14,7 @@ Keep parsing, file resolution, transclusion and script execution separate. Sourc
 - Rust comrak: CommonMark/GFM AST suited to transclusion; verify byte/source-position mappings and serialization fidelity, native footprint and Swift FFI.
 - TypeScript unified/remark + micromark: extension hooks and source positions fit desktop editor, but native iOS cannot use a full web wrapper as its implementation. Useful reference parser, not automatically the shared production core.
 
-Do not choose based on a regex spike. MRK-9/10 and a common fixture run must inform MRK-12's framework freeze. No dependencies installed or framework committed yet.
+Do not choose based on a regex spike. MRK-9/10 and a common fixture run must inform MRK-12's framework freeze. Pinned reference dependencies have now been installed; no production framework is committed.
 
 ## Proposed v0.1 grammar
 
@@ -24,7 +24,7 @@ Block directives appear at column zero in the first prototype. They must later b
 - `:::snippet{id="power"}` / body / standalone `:::`
 - Fenced `markright-data id="register"` with JSON body.
 - Fenced `markright-js id="decoder" inputs="register,settings"` with inert script body.
-- Typed inline file cards retain the provisional spec form; inline grammar is not implemented by the spike.
+- Typed inline file cards use the provisional spec form; see the source-mapped checkpoint below.
 
 IDs use `[A-Za-z][A-Za-z0-9_-]*`, share one namespace per source document, and duplicate definitions diagnose rather than shadow. Double-quoted attribute values only; unknown attributes diagnose. Quoted-value escaping is not yet accepted: use percent-encoded paths, leaving decoding to the resolver. Source paths are not accessed by scanning. A separate resolver validates URI decoding, traversal, root grants and symlink policy. Heading offsets are nonnegative 0–5 in this proposal; resulting depth beyond six must be diagnosed by resolver/rendering rather than silently clamped.
 
@@ -51,3 +51,10 @@ The pinned micromark 4.0.3 reference compiler passes all 652 upstream CommonMark
 The reference adapter now recognizes proposed inline `:file[label]{src="./path" display="card"}` syntax in Markdown text nodes. `display` may be `card` or `inline` (default `card`). Labels in this initial grammar are nonempty plain text without escapes; attributes are deliberately strict. Code, HTML, existing links, and images cannot contain active file cards. Odd-backslash escapes are preserved; no file is opened and no URL is fetched. These nodes are syntax records only, not safe/resolved file references. Path confinement, symlinks, URI schemes, filesystem capabilities, and native parser parity remain implementation gates.
 
 Line positions use a single line-start index and binary search rather than rescanning every source prefix. The 2,000-card CRLF fixture verifies every source slice and line. Current evidence: 25 passing test groups, including all 652 upstream CommonMark examples. This is still an experimental grammar spike, not an implemented renderer or shipped language contract.
+
+
+### Native parser comparison
+
+`cargo run --locked --manifest-path spikes/native-parser/Cargo.toml` repeats the same 652 CommonMark examples using pinned pulldown-cmark 0.13.6, with optional `-- --diffs` for inert JSON diagnostic output. All event ranges are checked as bounded UTF-8 byte offsets at character boundaries. It produces 630 exact HTML-string matches. Inspection of the 22 differences shows 21 quote-serialization variants (`"` versus `&quot;` in text) and one newline formatting difference before a raw HTML block in a list (example 175). These are not evidence of 22 Markdown interpretation defects. No blanket normalization has been applied: exact expected difference IDs are checked to detect drift. Production rendering still requires sanitization independently.
+
+The parser provides useful byte ranges, but converting them to native editor positions, matching GFM behavior, handling extension ASTs, comparing comrak, and validating Swift integration remain gates. This evidence supports retaining pulldown-cmark as a candidate rather than selecting the final core. Cargo lockfile is committed; no production runtime added.
