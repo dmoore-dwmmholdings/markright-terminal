@@ -29,3 +29,7 @@ Prove worker/process termination, heap/output/job limits, schema validation, hos
 ### Killable-boundary proof
 
 A separate Node worker initializes QuickJS with no cooperative interrupt handler and runs an endless guest loop. The parent waits for readiness and explicitly terminates the worker; the test verifies exit and a two-second termination upper bound. This passes and closes the narrow desktop-host feasibility question of stopping a noncooperating WASM guest. It is not an implementation of document trust, output validation, IPC quotas, mobile termination or an OS process sandbox. Worker startup/hard-deadline policy remains to be integrated. Under shared-machine load, cooperative allocation teardown also reached roughly 626 ms, reinforcing that its 100 ms callback deadline cannot be presented as a hard bound.
+
+### Heap-evidence correction from independent review
+
+The initial growing-array test could stop by CPU interruption, so it did not establish allocator enforcement by itself. The harness now retains error names/messages, labels that test as interruption-or-OOM, and separately requests a finite 16 MiB ArrayBuffer under the 8 MiB heap cap. That test explicitly requires `InternalError` with `out of memory`. The earlier broad heap-verification wording should be read only with this added allocator-specific evidence. A configured cap alone is not a proven cap; worker termination remains separate from memory verification.

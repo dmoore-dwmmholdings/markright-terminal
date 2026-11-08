@@ -54,3 +54,16 @@ test('lone CR documents preserve directive and card positions',()=>{
  assert.equal(r.source,source);assert.deepEqual(r.nodes.map(n=>[n.type,n.line]),[['include',2],['file',4]]);
  for(const n of r.nodes)assert.ok(source.slice(n.start,n.end).startsWith(n.type==='file'?':file':'::include'));
 });
+test('directive attributes preserve Markdown punctuation rather than masked bytes',()=>{
+ for(const path of ['./a*b*.mrk','./a`b`.mrk','https://example.com/a','./a[b](c).mrk']){
+  const s=`::include{src="${path}"}`;const r=analyze(s);assert.equal(r.nodes[0]?.src,path);assert.deepEqual(r.diagnostics,[]);
+ }
+});
+test('file cards parse raw syntax despite inline Markdown/autolink splitting',()=>{
+ for(const path of ['./a*b*.pdf','./a`b`.pdf','https://example.com/x','./a[b](c).pdf']){
+  const s=`:file[Board]{src="${path}"}`;const r=analyze(s);assert.equal(r.nodes[0]?.src,path);assert.deepEqual(r.diagnostics,[]);
+ }
+});
+test('reference-link definitions cannot steal a file-card label',()=>{
+ const s=':file[Board]{src="./board.pdf"}\n\n[Board]: https://example.com';const r=analyze(s);assert.equal(r.nodes[0]?.src,'./board.pdf');assert.deepEqual(r.diagnostics,[]);
+});
