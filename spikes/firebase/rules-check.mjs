@@ -1,7 +1,7 @@
 import test,{after,beforeEach} from 'node:test';
 import assert from 'node:assert/strict';import fs from 'node:fs';
 import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
-import {doc,setDoc,getDoc,deleteDoc} from 'firebase/firestore';
+import {doc,setDoc,getDoc,deleteDoc,writeBatch} from 'firebase/firestore';
 // Fail closed: this executable must never use a production endpoint/project.
 assert.equal(process.env.FIRESTORE_EMULATOR_HOST,'127.0.0.1:18080');
 const env=await initializeTestEnvironment({projectId:'demo-markright-spike',firestore:{host:'127.0.0.1',port:18080,rules:fs.readFileSync(new URL('./firestore.rules',import.meta.url),'utf8')}});
@@ -56,4 +56,26 @@ test('malformed metadata and unverified completion records are rejected',async()
 test('same head retry succeeds but cross-collection parent is not recognized',async()=>{
  const a=await base();await assertSucceeds(setDoc(doc(a,path('alice','heads','document')),{revision:'r0'}));
  await assertFails(setDoc(doc(a,'tenants/alice/collections/other/revisions/r1'),{document:'document',parent:'r0',blob:'blob0',tombstone:false}));
+});
+
+test('identical revision retry succeeds while altered bytes remain forbidden',async()=>{
+ const a=await base();await assertSucceeds(revision(a,'r0'));await assertFails(revision(a,'r0',null,'changed'));
+});
+test('forged-completion publication batch fails atomically',async()=>{
+ const a=await base();const batch=writeBatch(a);
+ batch.set(doc(a,path('alice','verifiedBlobs','forged')),{complete:true});
+ batch.set(doc(a,path('alice','revisions','candidate')),{document:'document',parent:'r0',blob:'forged',tombstone:false});
+ batch.set(doc(a,path('alice','heads','document')),{revision:'candidate'});
+ await assertFails(batch.commit());
+ assert.equal((await getDoc(doc(a,path('alice','heads','document')))).data().revision,'r0');
+ assert.equal((await getDoc(doc(a,path('alice','revisions','candidate')))).exists(),false);
+ assert.equal((await getDoc(doc(a,path('alice','verifiedBlobs','forged')))).exists(),false);
+});
+test('revision mutation aborts otherwise valid head publication in the same batch',async()=>{
+ const a=await base();await revision(a,'candidate','r0');const batch=writeBatch(a);
+ batch.set(doc(a,path('alice','revisions','r0')),{document:'document',parent:null,blob:'altered',tombstone:false});
+ batch.set(doc(a,path('alice','heads','document')),{revision:'candidate'});
+ await assertFails(batch.commit());
+ assert.equal((await getDoc(doc(a,path('alice','heads','document')))).data().revision,'r0');
+ assert.equal((await getDoc(doc(a,path('alice','revisions','r0')))).data().blob,'blob0');
 });

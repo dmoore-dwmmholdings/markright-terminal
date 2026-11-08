@@ -1,6 +1,6 @@
 # ADR 0004: revision, encryption and enrollment protocol
 
-Status: MRK-11 in progress. Pure local model; no Firebase project, network client, rules or cryptography implementation.
+Status: MRK-11 in progress. Local model and demo-only emulator rules; no production Firebase project/deployment, real sync client or cryptography implementation.
 
 ## Revision publication
 
@@ -32,4 +32,6 @@ Before production setup: Firebase account/project ownership, region/data residen
 
 ### Local Firestore Rules evidence
 
-A demo-only loopback emulator now exercises eight actual Rules tests for owner/cross-user isolation, immutable metadata, trusted-only completion records, conditional heads, conflicting writes, tombstones, schema bounds and cross-collection parent isolation. No production setup or deployment occurred. Verified-blob metadata is a server-seeded test stand-in, NOT proof of Cloud Storage finalization or cryptography. Sharing, revocation, rate/cost constraints, batch adversarial cases, real uploads and encryption remain gates. See `spikes/firebase/README.md`; the test executable refuses to run without the exact emulator endpoint.
+A demo-only loopback emulator now exercises eleven actual Rules tests for owner/cross-user isolation, immutable metadata, trusted-only completion records, conditional heads, conflicting writes, tombstones, schema bounds and cross-collection parent isolation. No production setup or deployment occurred. Verified-blob metadata is a server-seeded test stand-in, NOT proof of Cloud Storage finalization or cryptography. Sharing, revocation, rate/cost constraints, batch adversarial cases, real uploads and encryption remain gates. See `spikes/firebase/README.md`; the test executable refuses to run without the exact emulator endpoint.
+
+Independent review corrected a retry mismatch: identical revision reuploads now allow equality-only no-op updates; mutations remain forbidden. Emulator batch tests confirm forged completion and revision mutation abort the entire publication batch. These are scoped checks, not a complete server security review.

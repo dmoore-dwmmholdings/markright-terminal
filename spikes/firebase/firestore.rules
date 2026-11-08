@@ -20,7 +20,8 @@ service cloud.firestore {
       match /revisions/{revision} {
         allow read: if own(tenant);
         allow create: if own(tenant) && validId(revision) && validRevision(request.resource.data);
-        allow update, delete: if false;
+        allow update: if own(tenant) && request.resource.data == resource.data;
+        allow delete: if false;
       }
       match /heads/{document} {
         allow read: if own(tenant);
