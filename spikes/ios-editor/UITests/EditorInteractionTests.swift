@@ -21,4 +21,16 @@ import XCTest
         XCTAssertTrue(app.textViews["source-editor-3"].waitForExistence(timeout: 5))
         XCTAssertTrue((app.textViews["source-editor-3"].value as? String ?? "").contains("let value = 42"))
     }
+    func testLargeDocumentCanEnterEditAndReturnToPreview() {
+        let app = XCUIApplication(); app.launchArguments = ["--large-document"]; app.launch()
+        let first = app.buttons["preview-0"]
+        XCTAssertTrue(first.waitForExistence(timeout: 20)); first.tap()
+        let editor = app.textViews["source-editor-0"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5)); editor.tap(); editor.typeText("typed")
+        let source = editor.value as? String
+        XCTAssertTrue(source?.contains("typed") == true)
+        app.buttons["finish-editing"].tap(); app.buttons["preview-0"].tap()
+        XCTAssertEqual(app.textViews["source-editor-0"].value as? String, source)
+    }
+
 }

@@ -11,6 +11,13 @@ struct SourceBlock: Identifiable, Equatable {
     var blocks: [SourceBlock]
     var active: Int?
     var composing = false
+    static let sample = "# Markright Terminal\nNative **preview** example\n\n```swift\nlet value = 42\n```\n\n| Field | Value |\n| --- | --- |\n| status | ready |\n\nUnicode 😀 and café"
+    static var launchSource: String {
+        if ProcessInfo.processInfo.arguments.contains("--large-document") {
+            return String(String(repeating: "Plain **preview** line with source.\n", count: 30_000).prefix(1_000_000))
+        }
+        return sample
+    }
     init(source: String) {
         let lines = source.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         var groups: [SourceBlock] = []
@@ -81,11 +88,11 @@ struct NativeSourceEditor: UIViewRepresentable {
     var body: some Scene { WindowGroup { EditorScreen() } }
 }
 struct EditorScreen: View {
-    @State private var model = EditorModel(source: "# Markright Terminal\nNative **preview** example\n\n```swift\nlet value = 42\n```\n\n| Field | Value |\n| --- | --- |\n| status | ready |\n\nUnicode 😀 and café")
+    @State private var model = EditorModel(source: EditorModel.launchSource)
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                LazyVStack(alignment: .leading, spacing: 12) {
                     Text("Interaction prototype. Not a complete Markdown editor.").font(.caption).foregroundStyle(.secondary)
                     ForEach(model.blocks) { block in
                         if model.active == block.id {

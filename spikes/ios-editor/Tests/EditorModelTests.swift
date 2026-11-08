@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 @testable import MarkrightEditorSpike
 @MainActor final class EditorModelTests: XCTestCase {
     func testSourceRoundTripAndAtomicBlocks() {
@@ -18,4 +19,20 @@ import XCTest
         m.update(1, "😀 edited\nnew line")
         XCTAssertEqual(m.source,"first\n😀 edited\nnew line\nlast")
     }
+    func testNativeMarkedTextDefersPreviewUntilCommitted() {
+        let model = EditorModel(source: "source"); model.activate(0)
+        let view = UITextView(); view.text = "source"
+        let coordinator = NativeSourceEditor.Coordinator { source, composing in
+            model.composing = composing; model.update(0, source)
+        }
+        view.delegate = coordinator
+        view.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0))
+        XCTAssertNotNil(view.markedTextRange)
+        coordinator.textViewDidChange(view)
+        XCTAssertTrue(model.composing); model.finish(); XCTAssertEqual(model.active, 0)
+        view.unmarkText(); coordinator.textViewDidChangeSelection(view)
+        XCTAssertFalse(model.composing); XCTAssertEqual(model.source, view.text)
+        model.finish(); XCTAssertNil(model.active)
+    }
+
 }

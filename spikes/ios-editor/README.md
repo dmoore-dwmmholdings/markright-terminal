@@ -17,3 +17,7 @@ The model tests cover fixture source round-trip, block grouping, edits preservin
 ## Explicit limitations
 
 Grouping is a small fixture-level experiment, NOT CommonMark/GFM or the Markright grammar. Ordinary inline preview uses Foundation AttributedString; code/table previews currently remain source-like. IDs/groups are not reparsed after structural edits. There is no complete authoring toolbar, cross-block selection/undo, file collection, large-document UI performance proof, VoiceOver session, real IME keyboard proof, iPad/physical device validation or app-release acceptance. No claim of full Liquid Glass/accessibility conformance follows from system controls. MRK-9 stays open.
+
+## Extended phone and tablet checks
+
+Both dedicated iPhone 17 Pro and iPad Pro 11-inch (M5) iOS 26.5 simulators now pass four native model/UIKit tests plus two XCUITests. iPad destination: `51320233-D655-4A16-9FE2-B60C7FB87E67`. A native `setMarkedText`/`unmarkText` probe verifies the coordinator observes marked ranges and defers preview until commit; this is still not a real international keyboard session. The additional UI smoke launches a 1,000,000-byte fixture with lazy rows, types into the first block and verifies source survives preview/reactivation. It proves that scenario does not hang, not a p95 input-to-paint budget or full-document scroll performance. Results: `build/MRK9-iPhone-large-ime.xcresult` and `build/MRK9-iPad-large-ime.xcresult`. Both dedicated simulators are shut down after testing and retained for reuse; no existing destination was altered.
