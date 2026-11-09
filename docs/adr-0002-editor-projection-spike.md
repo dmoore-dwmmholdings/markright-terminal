@@ -44,3 +44,7 @@ A local CodeMirror/Lezer candidate now passes fifteen headless Chromium/WebKit c
 This favors a source-native editor candidate over treating rich-text output as the authoritative document, but it does not freeze CodeMirror/Tauri. Rendering is partial, primary-selection-only, and separate from the tentative native Comrak core. Physical Windows/Linux, real webview shell integration, screen readers/OS IME and p95 input-to-paint remain gates. Browser test durations are not latency acceptance.
 
 Desktop review reproduced a caret-at-atomic-block-end defect in both engines. Boundary regressions now cover fences/tables at EOF and following empty lines; two-sided node resolution fixes the gap without broadening the subsequent empty line. Fifteen browser checks pass; the WebKit CDP composition case remains explicitly skipped.
+
+### Automated accessibility findings and corrections
+
+Native `.all` preview-screen audits initially failed on touch target size, caption/button contrast and toolbar Dynamic Type. Each was fixed rather than filtered: minimum 44-point preview targets, primary caption contrast, and a body-font bottom action with high-contrast tint. The full phone and tablet suites now each pass five native plus four UI tests, including both light and dark audits. Actual VoiceOver navigation, active-editor auditing and real keyboard composition/scroll-away remain explicit downstream validation needs. The line-button prototype's larger touch spacing is also a UX tradeoff to resolve in the integrated editor, not a frozen final layout.

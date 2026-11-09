@@ -95,7 +95,7 @@ struct NativeSourceEditor: UIViewRepresentable {
 }
 
 @main struct EditorSpikeApp: App {
-    var body: some Scene { WindowGroup { EditorScreen() } }
+    var body: some Scene { WindowGroup { EditorScreen().preferredColorScheme(ProcessInfo.processInfo.arguments.contains("--dark-mode") ? .dark : nil) } }
 }
 struct EditorScreen: View {
     @State private var model = EditorModel(source: EditorModel.launchSource)
@@ -103,7 +103,7 @@ struct EditorScreen: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    Text("Interaction prototype. Not a complete Markdown editor.").font(.caption).foregroundStyle(.secondary)
+                    Text("Interaction prototype. Not a complete Markdown editor.").font(.caption).foregroundStyle(.primary)
                     ForEach(model.blocks) { block in
                         if model.active == block.id {
                             NativeSourceEditor(value: block.source, id: block.id) { value, composing in
@@ -115,7 +115,7 @@ struct EditorScreen: View {
                                 Group {
                                     if block.atomic { Text(block.source).font(.system(.body, design: .monospaced)) }
                                     else { Text((try? AttributedString(markdown: block.source)) ?? AttributedString(block.source.isEmpty ? " " : block.source)) }
-                                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                                }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("preview-\(block.id)")
@@ -126,7 +126,13 @@ struct EditorScreen: View {
                 }.padding()
             }
             .navigationTitle("Markright spike")
-            .toolbar { Button("Done editing") { model.finish() }.accessibilityIdentifier("finish-editing").disabled(model.composing) }
+            .safeAreaInset(edge: .bottom) {
+                Button("Done editing") { model.finish() }
+                    .font(.body).buttonStyle(.borderedProminent).controlSize(.large)
+                    .tint(Color(red: 0.35, green: 0.25, blue: 0.05))
+                    .accessibilityIdentifier("finish-editing").disabled(model.composing)
+                    .padding()
+            }
         }
     }
 }

@@ -33,4 +33,16 @@ import XCTest
         XCTAssertEqual(app.textViews["source-editor-0"].value as? String, source)
     }
 
+    func testPreviewAccessibilityAudit() throws {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["preview-1"].waitForExistence(timeout: 10))
+        try app.performAccessibilityAudit(for: .all)
+    }
+
+    func testDarkPreviewAccessibilityAudit() throws {
+        let app = XCUIApplication(); app.launchArguments = ["--dark-mode"]; app.launch()
+        XCTAssertTrue(app.buttons["preview-1"].waitForExistence(timeout: 10))
+        try app.performAccessibilityAudit(for: .all)
+    }
+
 }
