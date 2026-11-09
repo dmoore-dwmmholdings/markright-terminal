@@ -5,7 +5,7 @@ test('versionless and explicit 0.1 Markright use the same grammar',()=>{
  }
 });
 test('unsupported or malformed declared format fails closed without losing source',()=>{
- for(const header of ['<!-- markright: 0.2 -->','<!-- markright: latest -->']){
+ for(const header of ['<!-- markright: 0.2 -->','<!-- markright: latest -->','<!--markright: 0.2 -->','<!-- markright : 0.2 -->',' <!-- markright: 0.2 -->']){
   const s=header+'\n::include{src="x"}\n:file[Board]{src="x"}';const r=analyze(s);assert.equal(r.formatVersion,null);assert.deepEqual(r.nodes,[]);assert.equal(r.diagnostics.length,1);assert.equal(r.source,s);
  }
 });

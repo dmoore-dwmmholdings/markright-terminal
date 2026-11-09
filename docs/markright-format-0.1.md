@@ -4,7 +4,7 @@ Status: normative research proposal for MRK-8, subject to integrated MRK-12 revi
 
 ## Identity and baseline
 
-Source is UTF-8. Preserve source bytes, including BOM and LF/CRLF/CR line endings. `.md` is always ordinary Markdown and cannot opt into extensions by containing a marker. `.mrk` without a marker means profile **0.1**, not “whatever the newest runtime supports.” An optional first physical line, after an optional UTF-8 BOM, is exactly `<!-- markright: 0.1 -->`. A malformed or unsupported declared marker keeps source/ordinary Markdown readable but disables extension interpretation and reports a diagnostic. Markers elsewhere are ordinary source. Future incompatible versions require an explicit supported marker; never reinterpret old versionless files.
+Source is UTF-8. Preserve source bytes, including BOM and LF/CRLF/CR line endings. `.md` is always ordinary Markdown and cannot opt into extensions by containing a marker. `.mrk` without a marker means profile **0.1**, not “whatever the newest runtime supports.” An optional first physical line, after an optional UTF-8 BOM, is exactly `<!-- markright: 0.1 -->`. A malformed or unsupported declared marker keeps source/ordinary Markdown readable but disables extension interpretation and reports a diagnostic. A first-line comment prefix with optional spaces/tabs before `<!--`, optional spaces/tabs before `markright`, and a following space, tab, colon or end-of-line is reserved as a marker candidate; anything other than the exact supported marker fails closed. Markers elsewhere are ordinary source. Future incompatible versions require an explicit supported marker; never reinterpret old versionless files.
 
 Parsing baseline: CommonMark 0.31.2 plus the GFM 0.29 definitions for tables, task lists, strikethrough, extended autolinks and raw-tag filtering. The intended AST includes GFM's bare FTP autolink case. Navigation is a separate permission/URL-policy decision; recognizing an FTP link does not open it. The JavaScript reference's missing FTP case is an explicit MRK-13 adapter/parity gap, not an undocumented language deviation. Comrak currently recognizes it.
 
@@ -23,10 +23,12 @@ Block directives begin at logical column zero, excluding an initial BOM. A direc
 ```
 file-card = ':file[' label ']{src="' target '"' [ ' display="' ('card'|'inline') '"' ] '}'
 include   = '::include{src="' target '"' [ ' headingOffset="' ('0'|'1'|'2'|'3'|'4'|'5') '"' ] '}' trailing-space
-snippet   = ':::snippet{id="' identifier '"}' trailing-space newline body newline ':::' trailing-space
+snippet   = ':::snippet{id="' identifier '"}' trailing-space newline { body-line newline } ':::' trailing-space
 fence-info-data   = 'markright-data id="' identifier '"'
 fence-info-script = 'markright-js id="' identifier '"' [ ' inputs="' identifier { ',' identifier } '"' ]
 ```
+
+`newline` is LF, CRLF or CR. `trailing-space` is zero or more ASCII spaces/tabs. A snippet body has zero or more complete lines, so an opener immediately followed on the next line by its closer is empty. The closer may end at EOF; otherwise its line terminator is preserved. `body-line` is interpreted with the fence/ownership and non-nesting rules below.
 
 `label` is nonempty plain text without a closing bracket, backslash or newline; it is not parsed as rich Markdown. `target` is nonempty and quoted as above. File cards may occur in ordinary inline content, including headings/table cells, but never inside existing code, HTML, links or images, including reference links/images. A label's unrelated Markdown reference definition must not steal the card. Odd preceding backslashes escape the colon; even backslashes do not.
 
