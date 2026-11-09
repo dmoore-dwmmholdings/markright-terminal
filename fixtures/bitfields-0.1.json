@@ -1,0 +1,2253 @@
+{
+  "profile": "markright.bitfields/0.1",
+  "cases": [
+    {
+      "id": "uint8-zero",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 8,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 8,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Value",
+            "0"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "uint8-max",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 8,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 8,
+            "signed": false
+          }
+        ]
+      },
+      "input": "255",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Value",
+            "255"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "uint16-hex",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 16,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 16,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0xBEEF",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Value",
+            "48879"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "uint32-max",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 32,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 32,
+            "signed": false
+          }
+        ]
+      },
+      "input": "4294967295",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Value",
+            "4294967295"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "uint64-max",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "18446744073709551615",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Value",
+            "18446744073709551615"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "int64-min",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": true
+          }
+        ]
+      },
+      "input": "9223372036854775808",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Value",
+            "-9223372036854775808"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "int64-max",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": true
+          }
+        ]
+      },
+      "input": "9223372036854775807",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Value",
+            "9223372036854775807"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "int64-negative-one",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": true
+          }
+        ]
+      },
+      "input": "0xffffffffffffffff",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Value",
+            "-1"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "nibbles-signed",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 8,
+        "fields": [
+          {
+            "id": "low",
+            "label": "Low",
+            "lsb": 0,
+            "width": 4,
+            "signed": false
+          },
+          {
+            "id": "high",
+            "label": "High",
+            "lsb": 4,
+            "width": 4,
+            "signed": true
+          }
+        ]
+      },
+      "input": "0xA5",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Low",
+            "5"
+          ],
+          [
+            "High",
+            "-6"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "signed-one-bit-high",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "flag",
+            "label": "Flag",
+            "lsb": 63,
+            "width": 1,
+            "signed": true
+          }
+        ]
+      },
+      "input": "9223372036854775808",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Flag",
+            "-1"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "unsigned-one-bit-high",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "flag",
+            "label": "Flag",
+            "lsb": 63,
+            "width": 1,
+            "signed": false
+          }
+        ]
+      },
+      "input": "9223372036854775808",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Flag",
+            "1"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "signed63-min",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 63,
+            "signed": true
+          }
+        ]
+      },
+      "input": "4611686018427387904",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Value",
+            "-4611686018427387904"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "long-leading-zero-hex",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0x000000000000000000",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Value",
+            "0"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "empty-label",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 8,
+        "fields": [
+          {
+            "id": "value",
+            "label": "",
+            "lsb": 0,
+            "width": 8,
+            "signed": false
+          }
+        ]
+      },
+      "input": "1",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "",
+            "1"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "literal-label",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 8,
+        "fields": [
+          {
+            "id": "value",
+            "label": "<script>alert(1)</script> [x](javascript:alert(1)) 😀",
+            "lsb": 0,
+            "width": 8,
+            "signed": false
+          }
+        ]
+      },
+      "input": "42",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "<script>alert(1)</script> [x](javascript:alert(1)) 😀",
+            "42"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "sixty-four-fields",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "bit0",
+            "label": "Bit 0",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit1",
+            "label": "Bit 1",
+            "lsb": 1,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit2",
+            "label": "Bit 2",
+            "lsb": 2,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit3",
+            "label": "Bit 3",
+            "lsb": 3,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit4",
+            "label": "Bit 4",
+            "lsb": 4,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit5",
+            "label": "Bit 5",
+            "lsb": 5,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit6",
+            "label": "Bit 6",
+            "lsb": 6,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit7",
+            "label": "Bit 7",
+            "lsb": 7,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit8",
+            "label": "Bit 8",
+            "lsb": 8,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit9",
+            "label": "Bit 9",
+            "lsb": 9,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit10",
+            "label": "Bit 10",
+            "lsb": 10,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit11",
+            "label": "Bit 11",
+            "lsb": 11,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit12",
+            "label": "Bit 12",
+            "lsb": 12,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit13",
+            "label": "Bit 13",
+            "lsb": 13,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit14",
+            "label": "Bit 14",
+            "lsb": 14,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit15",
+            "label": "Bit 15",
+            "lsb": 15,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit16",
+            "label": "Bit 16",
+            "lsb": 16,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit17",
+            "label": "Bit 17",
+            "lsb": 17,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit18",
+            "label": "Bit 18",
+            "lsb": 18,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit19",
+            "label": "Bit 19",
+            "lsb": 19,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit20",
+            "label": "Bit 20",
+            "lsb": 20,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit21",
+            "label": "Bit 21",
+            "lsb": 21,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit22",
+            "label": "Bit 22",
+            "lsb": 22,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit23",
+            "label": "Bit 23",
+            "lsb": 23,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit24",
+            "label": "Bit 24",
+            "lsb": 24,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit25",
+            "label": "Bit 25",
+            "lsb": 25,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit26",
+            "label": "Bit 26",
+            "lsb": 26,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit27",
+            "label": "Bit 27",
+            "lsb": 27,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit28",
+            "label": "Bit 28",
+            "lsb": 28,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit29",
+            "label": "Bit 29",
+            "lsb": 29,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit30",
+            "label": "Bit 30",
+            "lsb": 30,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit31",
+            "label": "Bit 31",
+            "lsb": 31,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit32",
+            "label": "Bit 32",
+            "lsb": 32,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit33",
+            "label": "Bit 33",
+            "lsb": 33,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit34",
+            "label": "Bit 34",
+            "lsb": 34,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit35",
+            "label": "Bit 35",
+            "lsb": 35,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit36",
+            "label": "Bit 36",
+            "lsb": 36,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit37",
+            "label": "Bit 37",
+            "lsb": 37,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit38",
+            "label": "Bit 38",
+            "lsb": 38,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit39",
+            "label": "Bit 39",
+            "lsb": 39,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit40",
+            "label": "Bit 40",
+            "lsb": 40,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit41",
+            "label": "Bit 41",
+            "lsb": 41,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit42",
+            "label": "Bit 42",
+            "lsb": 42,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit43",
+            "label": "Bit 43",
+            "lsb": 43,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit44",
+            "label": "Bit 44",
+            "lsb": 44,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit45",
+            "label": "Bit 45",
+            "lsb": 45,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit46",
+            "label": "Bit 46",
+            "lsb": 46,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit47",
+            "label": "Bit 47",
+            "lsb": 47,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit48",
+            "label": "Bit 48",
+            "lsb": 48,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit49",
+            "label": "Bit 49",
+            "lsb": 49,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit50",
+            "label": "Bit 50",
+            "lsb": 50,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit51",
+            "label": "Bit 51",
+            "lsb": 51,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit52",
+            "label": "Bit 52",
+            "lsb": 52,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit53",
+            "label": "Bit 53",
+            "lsb": 53,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit54",
+            "label": "Bit 54",
+            "lsb": 54,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit55",
+            "label": "Bit 55",
+            "lsb": 55,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit56",
+            "label": "Bit 56",
+            "lsb": 56,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit57",
+            "label": "Bit 57",
+            "lsb": 57,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit58",
+            "label": "Bit 58",
+            "lsb": 58,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit59",
+            "label": "Bit 59",
+            "lsb": 59,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit60",
+            "label": "Bit 60",
+            "lsb": 60,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit61",
+            "label": "Bit 61",
+            "lsb": 61,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit62",
+            "label": "Bit 62",
+            "lsb": 62,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit63",
+            "label": "Bit 63",
+            "lsb": 63,
+            "width": 1,
+            "signed": false
+          }
+        ]
+      },
+      "input": "18446744073709551615",
+      "expected": {
+        "version": "0.1",
+        "kind": "table",
+        "columns": [
+          "Field",
+          "Value"
+        ],
+        "rows": [
+          [
+            "Bit 0",
+            "1"
+          ],
+          [
+            "Bit 1",
+            "1"
+          ],
+          [
+            "Bit 2",
+            "1"
+          ],
+          [
+            "Bit 3",
+            "1"
+          ],
+          [
+            "Bit 4",
+            "1"
+          ],
+          [
+            "Bit 5",
+            "1"
+          ],
+          [
+            "Bit 6",
+            "1"
+          ],
+          [
+            "Bit 7",
+            "1"
+          ],
+          [
+            "Bit 8",
+            "1"
+          ],
+          [
+            "Bit 9",
+            "1"
+          ],
+          [
+            "Bit 10",
+            "1"
+          ],
+          [
+            "Bit 11",
+            "1"
+          ],
+          [
+            "Bit 12",
+            "1"
+          ],
+          [
+            "Bit 13",
+            "1"
+          ],
+          [
+            "Bit 14",
+            "1"
+          ],
+          [
+            "Bit 15",
+            "1"
+          ],
+          [
+            "Bit 16",
+            "1"
+          ],
+          [
+            "Bit 17",
+            "1"
+          ],
+          [
+            "Bit 18",
+            "1"
+          ],
+          [
+            "Bit 19",
+            "1"
+          ],
+          [
+            "Bit 20",
+            "1"
+          ],
+          [
+            "Bit 21",
+            "1"
+          ],
+          [
+            "Bit 22",
+            "1"
+          ],
+          [
+            "Bit 23",
+            "1"
+          ],
+          [
+            "Bit 24",
+            "1"
+          ],
+          [
+            "Bit 25",
+            "1"
+          ],
+          [
+            "Bit 26",
+            "1"
+          ],
+          [
+            "Bit 27",
+            "1"
+          ],
+          [
+            "Bit 28",
+            "1"
+          ],
+          [
+            "Bit 29",
+            "1"
+          ],
+          [
+            "Bit 30",
+            "1"
+          ],
+          [
+            "Bit 31",
+            "1"
+          ],
+          [
+            "Bit 32",
+            "1"
+          ],
+          [
+            "Bit 33",
+            "1"
+          ],
+          [
+            "Bit 34",
+            "1"
+          ],
+          [
+            "Bit 35",
+            "1"
+          ],
+          [
+            "Bit 36",
+            "1"
+          ],
+          [
+            "Bit 37",
+            "1"
+          ],
+          [
+            "Bit 38",
+            "1"
+          ],
+          [
+            "Bit 39",
+            "1"
+          ],
+          [
+            "Bit 40",
+            "1"
+          ],
+          [
+            "Bit 41",
+            "1"
+          ],
+          [
+            "Bit 42",
+            "1"
+          ],
+          [
+            "Bit 43",
+            "1"
+          ],
+          [
+            "Bit 44",
+            "1"
+          ],
+          [
+            "Bit 45",
+            "1"
+          ],
+          [
+            "Bit 46",
+            "1"
+          ],
+          [
+            "Bit 47",
+            "1"
+          ],
+          [
+            "Bit 48",
+            "1"
+          ],
+          [
+            "Bit 49",
+            "1"
+          ],
+          [
+            "Bit 50",
+            "1"
+          ],
+          [
+            "Bit 51",
+            "1"
+          ],
+          [
+            "Bit 52",
+            "1"
+          ],
+          [
+            "Bit 53",
+            "1"
+          ],
+          [
+            "Bit 54",
+            "1"
+          ],
+          [
+            "Bit 55",
+            "1"
+          ],
+          [
+            "Bit 56",
+            "1"
+          ],
+          [
+            "Bit 57",
+            "1"
+          ],
+          [
+            "Bit 58",
+            "1"
+          ],
+          [
+            "Bit 59",
+            "1"
+          ],
+          [
+            "Bit 60",
+            "1"
+          ],
+          [
+            "Bit 61",
+            "1"
+          ],
+          [
+            "Bit 62",
+            "1"
+          ],
+          [
+            "Bit 63",
+            "1"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "unknown-kind",
+      "spec": {
+        "kind": "download-script",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "unsupported-bits",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 7,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 7,
+            "signed": false
+          }
+        ]
+      },
+      "input": "1",
+      "reject": true
+    },
+    {
+      "id": "negative-bits",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": -1,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": -1,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "empty-fields",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": []
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "zero-width",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 0,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "negative-width",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": -1,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "oversized-width",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 65,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "negative-lsb",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": -1,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "lsb-out-of-range",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 64,
+            "width": 1,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "range-overflow",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 63,
+            "width": 2,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "overlap",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 8,
+        "fields": [
+          {
+            "id": "a",
+            "label": "A",
+            "lsb": 0,
+            "width": 4,
+            "signed": false
+          },
+          {
+            "id": "b",
+            "label": "B",
+            "lsb": 3,
+            "width": 4,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "duplicate-id",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 8,
+        "fields": [
+          {
+            "id": "same",
+            "label": "A",
+            "lsb": 0,
+            "width": 4,
+            "signed": false
+          },
+          {
+            "id": "same",
+            "label": "B",
+            "lsb": 4,
+            "width": 4,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "empty-id",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "id-starts-number",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "1value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "id-non-ascii",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "vélue",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "id-too-long",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "label-too-long",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "too-many-fields",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "bit0",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit1",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit2",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit3",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit4",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit5",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit6",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit7",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit8",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit9",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit10",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit11",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit12",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit13",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit14",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit15",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit16",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit17",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit18",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit19",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit20",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit21",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit22",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit23",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit24",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit25",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit26",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit27",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit28",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit29",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit30",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit31",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit32",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit33",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit34",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit35",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit36",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit37",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit38",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit39",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit40",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit41",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit42",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit43",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit44",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit45",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit46",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit47",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit48",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit49",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit50",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit51",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit52",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit53",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit54",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit55",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit56",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit57",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit58",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit59",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit60",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit61",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit62",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit63",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          },
+          {
+            "id": "bit64",
+            "label": "Bit",
+            "lsb": 0,
+            "width": 1,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0",
+      "reject": true
+    },
+    {
+      "id": "uint8-overflow",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 8,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 8,
+            "signed": false
+          }
+        ]
+      },
+      "input": "256",
+      "reject": true
+    },
+    {
+      "id": "uint64-overflow",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "18446744073709551616",
+      "reject": true
+    },
+    {
+      "id": "hex-overflow",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0x10000000000000000",
+      "reject": true
+    },
+    {
+      "id": "negative-input",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "-1",
+      "reject": true
+    },
+    {
+      "id": "decimal-leading-zero",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "01",
+      "reject": true
+    },
+    {
+      "id": "empty-hex",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0x",
+      "reject": true
+    },
+    {
+      "id": "uppercase-prefix",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0X1",
+      "reject": true
+    },
+    {
+      "id": "exponent-input",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "1e0",
+      "reject": true
+    },
+    {
+      "id": "fraction-input",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "1.0",
+      "reject": true
+    },
+    {
+      "id": "leading-space",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": " 1",
+      "reject": true
+    },
+    {
+      "id": "plus-input",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "+1",
+      "reject": true
+    },
+    {
+      "id": "non-ascii-digit",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "١",
+      "reject": true
+    },
+    {
+      "id": "expression-input",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "1+2",
+      "reject": true
+    },
+    {
+      "id": "empty-input",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "",
+      "reject": true
+    },
+    {
+      "id": "input-too-long",
+      "spec": {
+        "kind": "markright.bitfields/0.1",
+        "bits": 64,
+        "fields": [
+          {
+            "id": "value",
+            "label": "Value",
+            "lsb": 0,
+            "width": 64,
+            "signed": false
+          }
+        ]
+      },
+      "input": "0x0000000000000000000",
+      "reject": true
+    }
+  ]
+}

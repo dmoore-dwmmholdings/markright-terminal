@@ -13,4 +13,4 @@ Local feasibility workspace for Disegno MRK v2, Andare MRK-8 through MRK-11. Thi
 
 Use a supported Node.js 22+ installation; verification runs use Node.js 24.
 
-`docs/adr-0001-grammar-spike.md` through `adr-0004-sync-protocol-model.md` document findings and unresolved acceptance gates. Parser fixture HTML is compared only as inert strings and is never rendered. Sandbox code is an authored adversarial test harness, not a production scripting API. The revision model is an in-memory protocol experiment, not Firebase rules or cryptography.
+`docs/adr-0001-grammar-spike.md` through `adr-0005-ios-declarative-fallback.md` document findings and unresolved acceptance gates. Parser fixture HTML is compared only as inert strings and is never rendered. Sandbox code is an authored adversarial test harness, not a production scripting API. The native typed calculator kernel does not parse untrusted document JSON. The revision model is an in-memory protocol experiment, not Firebase rules or cryptography.

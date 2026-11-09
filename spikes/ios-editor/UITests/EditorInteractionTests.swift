@@ -51,6 +51,21 @@ import XCTest
         sourceButton.tap()
         XCTAssertEqual(app.textViews["document-source-editor"].value as? String, changed)
     }
+    func testStaticCalculatorResultRemainsReadableWithoutExecution() {
+        let app = XCUIApplication(); app.launchArguments = ["--static-calculator"]; app.launch()
+        let warning = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "execution is unavailable")).firstMatch
+        XCTAssertTrue(warning.waitForExistence(timeout: 10))
+        let result = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "18446744073709551615")).firstMatch
+        XCTAssertTrue(result.exists)
+        XCTAssertTrue(result.label.contains("| Value | 18446744073709551615 |"))
+        app.buttons["show-document-source"].tap()
+        let source = app.textViews["document-source-editor"]
+        XCTAssertTrue(source.waitForExistence(timeout: 5))
+        let text = source.value as? String ?? ""
+        XCTAssertTrue(text.contains("18446744073709551615"))
+        XCTAssertTrue(text.contains("throw new Error(\"snapshot-executed\");"))
+        XCTAssertTrue(text.contains("No freshness or trust verification is claimed."))
+    }
 
     func testPreviewAccessibilityAudit() throws {
         let app = XCUIApplication(); app.launch()

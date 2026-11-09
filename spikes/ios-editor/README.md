@@ -6,7 +6,7 @@ SwiftUI previews plus a native UITextView for the selected source line/fixture b
 
 Generate with `xcodegen generate --spec spikes/ios-editor/project.yml`. Build/test the generated project and scheme `MarkrightEditorSpike`, with a dedicated simulator UUID and `-derivedDataPath spikes/ios-editor/build -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO`. Never target `booted` or a physical device implicitly. Coordinate simulator ownership before running. Do not open Simulator.app for headless runs.
 
-Current isolated destination: Markright-MRK9-20261108, `1C3FCA53-C143-4C4C-B353-298B1711744C`, iPhone 17 Pro/iOS 26.5. Other projects' simulators and attached physical devices were left untouched; that worker confirmed no conflict.
+Historical isolated destination: Markright-MRK9-20261108, `1C3FCA53-C143-4C4C-B353-298B1711744C`, iPhone 17 Pro/iOS 26.5. That device/runtime was no longer installed after later cleanup. The current dedicated MRK-28 destination is recorded below; never substitute another project's device. Other projects' simulators and attached physical devices were not targeted.
 
 ## Verified evidence
 
@@ -43,3 +43,13 @@ The bottom Source action opens the entire authoritative document in a scrolling 
 Independent review reproduced stale-callback overwrites and cleared the generation checks after regression coverage. The first new Source action in the navigation bar failed Dynamic Type audits; it moved into the scalable bottom action area, without suppressing any audit category. Failure evidence remains `build/MRK9-whole-source-phone-20261109.xcresult`.
 
 Both dedicated phone and iPad now pass **12 native tests and 5 UI tests**, including exact literal source insertion/Done/re-entry and full light/dark preview accessibility audits. Results: `build/MRK9-whole-source-phone-fixed-20261109.xcresult` and `build/MRK9-whole-source-ipad-20261109.xcresult`. These are simulator/fixture checks, not VoiceOver or full client acceptance. Active-editor accessibility, real OS IME, cross-block selection/undo interaction, 1 MB whole-source latency, full Markdown semantics and file persistence remain gates.
+
+## MRK-28 native declarative fallback
+
+`DeclarativeDecoder.swift` is a pure typed Swift bit-field kernel with exact UInt64/signed results and bounded literal table output. It has test-only callers; no document JSON parser, interpreter, automatic execution or calculator UI bridge is added. `fixtures/bitfields-0.1.json` supplies 49 shared trusted vectors. Foundation JSONDecoder is used only to load that authored test corpus, not untrusted document data.
+
+The `--static-calculator` launch flag loads only the authored bundled `calculator-static.md`. Its frozen table and inert script source remain readable while execution is unavailable, with explicit freshness/trust disclaimers. This is fixture-level readability, not snapshot/import/export or distribution acceptance.
+
+Current isolated destination: `Markright-MRK28-iOS27-20261109`, `B41A0866-71EA-45B5-94DB-C1634AEC0F5B`, iPhone Duo/iOS 27.2. The runtime was already installed; no download, physical device or other project's simulator was used. Targeted result `build/MRK28-native-declarative-ios27-20261109.xcresult`: **7 native decoder tests + 1 static-readability UI test pass**. The prior full editor/audit counts above are historical and were not rerun for this targeted change. Current policy evidence and remaining gates are in `docs/adr-0005-ios-declarative-fallback.md`.
+
+Reproduce with the existing xcodebuild command and explicit destination, adding `-only-testing:MarkrightEditorSpikeTests/DeclarativeDecoderTests` and `-only-testing:MarkrightEditorSpikeUITests/EditorInteractionTests/testStaticCalculatorResultRemainsReadableWithoutExecution`. Regenerate the project from `project.yml` first so both trusted fixtures are bundled.

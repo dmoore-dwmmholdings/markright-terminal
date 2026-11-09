@@ -18,6 +18,13 @@ struct SourceBlock: Identifiable, Equatable {
     private(set) var editingGeneration = 0
     static let sample = "# Markright Terminal\nNative **preview** example\n\n```swift\nlet value = 42\n```\n\n| Field | Value |\n| --- | --- |\n| status | ready |\n\nUnicode 😀 and café"
     static var launchSource: String {
+        if ProcessInfo.processInfo.arguments.contains("--static-calculator") {
+            guard let url = Bundle.main.url(forResource: "calculator-static", withExtension: "md"),
+                  let source = try? String(contentsOf: url, encoding: .utf8) else {
+                return "Static calculator fixture unavailable. No document code was executed."
+            }
+            return source
+        }
         if ProcessInfo.processInfo.arguments.contains("--large-document") {
             return String(String(repeating: "Plain **preview** line with source.\n", count: 30_000).prefix(1_000_000))
         }

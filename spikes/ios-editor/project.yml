@@ -13,7 +13,10 @@ targets:
   MarkrightEditorSpike:
     type: application
     platform: iOS
-    sources: [Sources]
+    sources:
+      - path: Sources
+      - path: ../../fixtures/calculator-static.md
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.dwmm.markright.spike.editor
@@ -21,7 +24,10 @@ targets:
   MarkrightEditorSpikeTests:
     type: bundle.unit-test
     platform: iOS
-    sources: [Tests]
+    sources:
+      - path: Tests
+      - path: ../../fixtures/bitfields-0.1.json
+        buildPhase: resources
     dependencies:
       - target: MarkrightEditorSpike
   MarkrightEditorSpikeUITests:
