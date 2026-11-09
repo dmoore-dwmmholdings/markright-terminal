@@ -41,8 +41,63 @@ test('native browser composition commits exact text without duplicate source',as
  await page.evaluate(()=>{spike.setSource('first\nsecond');spike.select(2);spike.focus();});
  const cdp=await page.context().newCDPSession(page);
  await cdp.send('Input.imeSetComposition',{text:'に',selectionStart:1,selectionEnd:1});
+ await expect(page.getByRole('button',{name:'Source mode'})).toBeDisabled();
+ // Bypass the disabled element's default click behavior to exercise the guard.
+ await page.evaluate(()=>document.querySelector('#source-mode').dispatchEvent(new MouseEvent('click')));
+ await expect(page.getByRole('button',{name:'Source mode'})).toHaveAttribute('aria-pressed','false');
  await cdp.send('Input.insertText',{text:'日本語'});
  await expect.poll(()=>page.evaluate(()=>spike.source())).toBe('fi日本語rst\nsecond');
+ await expect(page.getByRole('button',{name:'Source mode'})).toBeEnabled();
+});
+test('whole-document source mode preserves exact source and reverse selection',async({page})=>{
+ const source='\uFEFF# Heading\r\n\rA **bold** and *italic* line\n\n<script>window.injected=1</script>\r\n';
+ await page.evaluate(source=>{spike.setSource(source);spike.select(source.indexOf('italic')+3,source.indexOf('bold'));},source);
+ const selection=await page.evaluate(()=>spike.selection());
+ const toggle=page.getByRole('button',{name:'Source mode'});
+ await toggle.click();
+ await expect(toggle).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('[class*="preview-"]')).toHaveCount(0);
+ await expect(page.locator('.cm-content')).toContainText('# Heading');
+ await expect(page.locator('.cm-content')).toContainText('**bold** and *italic*');
+ expect(await page.evaluate(()=>spike.source())).toBe(source);
+ expect(await page.evaluate(()=>spike.selection())).toEqual(selection);
+ await toggle.click();
+ await expect(toggle).toHaveAttribute('aria-pressed','false');
+ expect(await page.evaluate(()=>spike.source())).toBe(source);
+ expect(await page.evaluate(()=>spike.selection())).toEqual(selection);
+ expect(await page.evaluate(()=>window.injected)).toBeUndefined();
+ await expect(page.locator('.cm-content script')).toHaveCount(0);
+});
+test('source toggle refuses composition before the first text update',async({page})=>{
+ await page.evaluate(()=>{
+  spike.focus();
+  document.querySelector('.cm-content').dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));
+  // Selection transactions must not re-enable the toggle during this phase.
+  spike.select(1);
+  document.querySelector('#source-mode').dispatchEvent(new MouseEvent('click'));
+ });
+ const toggle=page.getByRole('button',{name:'Source mode'});
+ await expect(toggle).toHaveAttribute('aria-pressed','false');
+ await expect(toggle).toBeDisabled();
+ await page.evaluate(()=>document.querySelector('.cm-content').dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})));
+ await expect(toggle).toBeEnabled();
+});
+test('keyboard source toggle preserves edit history and returns focus to the editor',async({page})=>{
+ const source='\uFEFFfirst\r\nA **bold** line\rafter\n';
+ await page.evaluate(source=>{spike.setSource(source);spike.select(source.indexOf('bold'));spike.focus();},source);
+ await page.keyboard.type('X');
+ const edited=source.replace('bold','Xbold');
+ const toggle=page.getByRole('button',{name:'Source mode'});
+ await toggle.focus();await page.keyboard.press('Space');
+ await expect(toggle).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.cm-content')).toBeFocused();
+ await page.keyboard.press(process.platform==='darwin'?'Meta+z':'Control+z');
+ expect(await page.evaluate(()=>spike.source())).toBe(source);
+ await toggle.focus();await page.keyboard.press('Enter');
+ await expect(toggle).toHaveAttribute('aria-pressed','false');
+ await expect(page.locator('.cm-content')).toBeFocused();
+ await page.keyboard.press(process.platform==='darwin'?'Meta+Shift+z':'Control+Shift+z');
+ expect(await page.evaluate(()=>spike.source())).toBe(edited);
 });
 test('atomic EOF boundaries reveal the complete block but not a following empty line',async({page})=>{
  for(const source of ['```js\nx\n```','|a|b|\n|-|-|\n|x|y|']){

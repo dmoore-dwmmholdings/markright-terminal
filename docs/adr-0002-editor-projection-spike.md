@@ -2,6 +2,14 @@
 
 Status: MRK-9 in progress, not UI acceptance.
 
+## Desktop whole-document source mode — November 9, 2026
+
+The desktop research editor now has an explicit Source mode control. A CodeMirror compartment removes/reinstalls only preview decorations without rebuilding state, preserving raw-source separator metadata, reverse selection and edit history. Keyboard activation returns focus to the editor. This is an editing mode; a read-only reading mode and complete renderer remain absent. Parsing continues, so no performance fallback or latency claim follows.
+
+Independent review identified a transition gap before the first composition edit: `view.composing` is false in that phase. A new synthetic compositionstart/selection-update/forced-click regression failed in both browser engines before all toggle/control/projection guards switched to `compositionStarted`. Final evidence is 29 browser passes/1 existing WebKit CDP-composition skip (`spikes/macos-editor/build/desktop-source-mode-browser-final-20261109.log`) and11 scoped offscreen system-WebKit groups (`desktop-source-mode-native-final-20261109.log`), including exact mixed-ending source and directional selection through both modes. Browser checks also prove undo/redo and keyboard focus survive transitions. Failed log/error contexts are retained separately from final results.
+
+The final bundled assets build into the unused separate unsigned Verification app with Swift warnings as errors (`desktop-source-mode-host-final-20261109.log`). Existing visible Debug app/preview tabs were preserved; preview reload exposes the control but discards temporary edits. This evidence does not prove OS IME/clipboard, VoiceOver/accessibility acceptance, all desktop shells, persistence, read-only reading mode, native iOS changes or network isolation. MRK-9/12 and security/ingestion/physical/device/distribution/release gates remain open. No simulator/download or other workers' artifacts were used.
+
 ## Retained system-WebKit view teardown — November 9, 2026
 
 A delayed authored navigation reproduced a lifecycle gap: the old `stop()` cleared delegates while leaving its loaded page alive, allowing a retained view to reach the loopback trap and commit a response after teardown (TCP/nonempty-receive delta `[1, 1]`, `spikes/macos-editor/build/teardown-before-session-20261109.log`). The previous stale-`didFinish` check alone did not cover this.

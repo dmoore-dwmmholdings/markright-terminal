@@ -57,6 +57,10 @@ Swift warnings-as-errors app verification passes in the existing separate Verifi
 
 ## Verified checkpoint
 
+### Bundled whole-document source control
+
+The latest bundled desktop fixture has an explicit Source mode toggle. Eleven scoped groups pass in `build/desktop-source-mode-native-final-20261109.log`, including authored DOM clicks that reveal all syntax and preserve exact BOM/mixed-ending source plus reverse selection through both transitions. Keyboard/focus/undo and composition guards have separate headless browser evidence (29 passes/1 explicit WebKit CDP skip); the offscreen native probe is not OS keyboard input. `build/desktop-source-mode-host-final-20261109.log` records a successful warnings-as-errors build into the unused Verification product. The existing visible Debug app was not updated/restarted. Source mode continues parsing; it is not a read-only reading mode, full renderer or performance acceptance. All isolation/VoiceOver/ingestion/device/release gates remain.
+
 ### Retained-view teardown follow-up
 
 The old teardown removed weak delegates while leaving the loaded page alive. An authored delayed navigation after `stop()` reached the loopback trap and committed its response: TCP/nonempty-receive deltas `[1, 1]` in `build/teardown-before-session-20261109.log`. The old stale-callback assertion passed despite this gap.

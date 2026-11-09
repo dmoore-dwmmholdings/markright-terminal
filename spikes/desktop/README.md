@@ -2,6 +2,14 @@
 
 Local CodeMirror 6/Lezer Markdown candidate. This is not a Tauri application, full Markdown renderer or selected production framework. No document scripts execute; source is shown as text, never injected as HTML. It does not implement Markright file resolution/includes or use the native parser yet.
 
+## Whole-document source mode
+
+The explicit **Source mode** toggle reveals all syntax by reconfiguring only the preview decoration compartment. It keeps the same editor state, source-separator metadata, directional selection and history; keyboard activation returns focus to the editor. It is a whole-document editing view, not a read-only reading mode or a parser/performance fallback. Markdown parsing still runs, and the renderer remains partial.
+
+The control exposes `aria-pressed` and a mode description. It refuses transitions throughout CodeMirror's `compositionStarted` phase and disables during composition; projection updates also wait for that broader phase. Review caught the initial use of `composing`, which is false before the first composition edit. A synthetic start-without-input/selection-update/bypass-disabled-click regression failed in both engines before correction. These programmatic/CDP observations do not establish real OS IME, assistive technology or VoiceOver acceptance.
+
+Current evidence: **29 browser checks pass, 1 existing explicit WebKit CDP-composition skip** in `spikes/macos-editor/build/desktop-source-mode-browser-final-20261109.log`. Added flows cover exact BOM/mixed-ending source, reverse selection, inert markup, keyboard toggle/focus and undo/redo across modes. The before-fix log and error contexts remain in `desktop-source-mode-composition-before-20261109.log` and this spike's `build/test-results`; final output uses `build/source-mode-final-results`. Eleven system-WebKit groups also pass, including bundled control clicks with exact source/selection retained; that probe is not OS keyboard input. The separate unsigned Mac Verification product builds with warnings as errors. No existing preview tab or visible Debug app was reloaded; the preview offers this control on its next reload, which resets its temporary edits.
+
 Build: `node_modules/.bin/esbuild spikes/desktop/editor.mjs --bundle --outfile=spikes/desktop/build/bundle.js`.
 Test: `node_modules/.bin/playwright test -c spikes/desktop/playwright.config.mjs`.
 

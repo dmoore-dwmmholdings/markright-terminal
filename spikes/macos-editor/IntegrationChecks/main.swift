@@ -164,6 +164,23 @@ private final class LoopbackTrap: @unchecked Sendable {
     try require(pasted == "\u{FEFF}first\r\nA\rB\n😀\rafter\n", "System WebKit changed delivered source separators")
     print("PASS programmatic delivered-string paste and mixed source endings")
 
+    let modeFixture = "\u{FEFF}# Heading\r\n\rA **bold** and *italic* line\n"
+    let sourceMode = try await javascript(view, """
+        window.spike.setSource(source);
+        window.spike.select(source.indexOf('italic') + 3, source.indexOf('bold'));
+        const selection = JSON.stringify(window.spike.selection());
+        const button = document.querySelector('#source-mode'); button.click();
+        const revealed = button.getAttribute('aria-pressed') === 'true' &&
+            document.querySelectorAll('[class*="preview-"]').length === 0 &&
+            document.querySelector('.cm-content').textContent.includes('**bold** and *italic*') &&
+            JSON.stringify(window.spike.selection()) === selection && window.spike.source() === source;
+        button.click();
+        return revealed && button.getAttribute('aria-pressed') === 'false' &&
+            JSON.stringify(window.spike.selection()) === selection && window.spike.source() === source ? 'preserved' : 'changed';
+        """, ["source": modeFixture])
+    try require(sourceMode == "preserved", "Source mode changed source/selection or failed to reveal syntax")
+    print("PASS explicit source-mode toggle with exact mixed-ending source and reverse selection retained")
+
     let inert = "<img src='\(target)' onerror='window.injected=1'>\n\n<script>window.injected=1</script>"
     let literal = try await javascript(view, """
         window.spike.setSource(source);
@@ -274,7 +291,7 @@ private final class LoopbackTrap: @unchecked Sendable {
                 "Teardown lost refusal delegates or showed native UI")
     print("PASS retained-view teardown after controller release: delayed script navigation refused, dialogs suppressed, covered native loads rejected, no stale status or additional application bytes")
     print("OBSERVATION: teardown TCP delta=\(trap.counts[0] - teardownBaseline[0]); JavaScript remains alive and process/network isolation is not established.")
-    print("Passed 10 scoped offscreen system-WKWebView integration checks. No OS keyboard/clipboard, VoiceOver, latency or full network/security acceptance claimed.")
+    print("Passed 11 scoped offscreen system-WKWebView integration checks. No OS keyboard/clipboard, VoiceOver, latency or full network/security acceptance claimed.")
 }
 
 @main private enum IntegrationChecks {
