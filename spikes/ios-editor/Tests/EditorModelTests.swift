@@ -74,6 +74,63 @@ import UIKit
         XCTAssertEqual(model.blocks[2].source, "after e\u{301}")
         XCTAssertFalse(model.composing)
     }
+    func testWholeSourceModeKeepsExactSourceAndRegroupsStructuralEditsOnExit() {
+        let original = "\u{FEFF}before\r\ntext\rafter\n"
+        let model = EditorModel(source: original)
+        model.activate(1)
+        model.showSource()
+        XCTAssertTrue(model.sourceMode)
+        XCTAssertNil(model.active)
+        XCTAssertEqual(Array(model.source.utf8), Array(original.utf8))
+        let changed = "\u{FEFF}before\r\n```swift\rvalue\n```\rafter\n"
+        model.updateDocumentSource(changed, composing: false, generation: model.editingGeneration)
+        XCTAssertEqual(Array(model.source.utf8), Array(changed.utf8))
+        model.finish()
+        XCTAssertFalse(model.sourceMode)
+        XCTAssertEqual(model.documentSource, "")
+        XCTAssertEqual(Array(model.source.utf8), Array(changed.utf8))
+        XCTAssertEqual(model.blocks.filter(\.atomic).count, 1)
+        XCTAssertEqual(model.blocks[1].source, "```swift\rvalue\n```")
+    }
+    func testWholeSourceModeCannotSwitchDuringMarkedTextOrAcceptLateTeardown() {
+        let model = EditorModel(source: "original")
+        model.composing = true
+        model.showSource()
+        XCTAssertFalse(model.sourceMode)
+        model.composing = false
+        model.showSource()
+        let oldGeneration = model.editingGeneration
+        model.composing = true
+        model.updateDocumentSource("composing に", composing: true, generation: oldGeneration)
+        model.finish()
+        XCTAssertTrue(model.sourceMode)
+        model.composing = false
+        model.finish()
+        model.updateDocumentSource("late old view callback", composing: true, generation: oldGeneration)
+        XCTAssertEqual(model.source, "composing に")
+        XCTAssertFalse(model.composing)
+        model.showSource()
+        model.updateDocumentSource("stale after re-entry", composing: true, generation: oldGeneration)
+        XCTAssertEqual(model.source, "composing に")
+        XCTAssertFalse(model.composing)
+        model.updateDocumentSource("current generation", composing: true, generation: model.editingGeneration)
+        model.updateDocumentSource("stale clears composition", composing: false, generation: oldGeneration)
+        XCTAssertTrue(model.composing)
+        XCTAssertEqual(model.source, "current generation")
+    }
+    func testOldBlockCallbackCannotOverwriteRegroupedSourceOrCurrentComposition() {
+        let model = EditorModel(source: "first\nold\nlast")
+        model.activate(1)
+        let oldGeneration = model.editingGeneration
+        model.showSource()
+        model.updateDocumentSource("first\nnew\nlast", composing: false, generation: model.editingGeneration)
+        model.finish()
+        model.activate(1)
+        model.updateBlockFromEditor(1, "new に", composing: true, generation: model.editingGeneration)
+        model.updateBlockFromEditor(1, "old teardown", composing: false, generation: oldGeneration)
+        XCTAssertTrue(model.composing)
+        XCTAssertEqual(model.source, "first\nnew に\nlast")
+    }
     func testNativeMarkedTextDefersPreviewUntilCommitted() {
         let model = EditorModel(source: "source"); model.activate(0)
         let view = UITextView(); view.text = "source"

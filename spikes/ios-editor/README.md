@@ -35,3 +35,11 @@ Both phone and tablet now pass the same five native tests and four UI tests, inc
 Swift Character-based LF splitting failed to group CRLF and CR fixtures even though their initial bytes often round-tripped. The model now scans physical LF/CRLF/CR scalar boundaries and stores each block's original `separatorAfter`, preserving internal atomic-block endings and untouched neighbors. Four added tests cover consistent grouping, mixed endings/BOM/Unicode, empty EOF and an actual UITextView atomic-block replacement through its coordinator.
 
 Dedicated phone run `build/MRK9-source-endings-20261109.xcresult`: **9 native model/UIKit tests pass**, zero failures. This run selected native tests only; the earlier four UI/audit checks were not rerun, and iPad/physical-device/real keyboard/VoiceOver acceptance remains separate. Grouping is still a fixture experiment and structural edits do not reparse it. No files or services are accessed.
+
+## Whole-document source fallback
+
+The bottom Source action opens the entire authoritative document in a scrolling native UITextView. Done commits that source and rebuilds the fixture groups, allowing structural edits outside the limited per-block projection. Composition guards prevent switching modes mid-composition. Editor-generation checks reject old block/document callbacks before they can overwrite source or alter the new session's composing state. Undo history across mode switches is not implemented or claimed.
+
+Independent review reproduced stale-callback overwrites and cleared the generation checks after regression coverage. The first new Source action in the navigation bar failed Dynamic Type audits; it moved into the scalable bottom action area, without suppressing any audit category. Failure evidence remains `build/MRK9-whole-source-phone-20261109.xcresult`.
+
+Both dedicated phone and iPad now pass **12 native tests and 5 UI tests**, including exact literal source insertion/Done/re-entry and full light/dark preview accessibility audits. Results: `build/MRK9-whole-source-phone-fixed-20261109.xcresult` and `build/MRK9-whole-source-ipad-20261109.xcresult`. These are simulator/fixture checks, not VoiceOver or full client acceptance. Active-editor accessibility, real OS IME, cross-block selection/undo interaction, 1 MB whole-source latency, full Markdown semantics and file persistence remain gates.

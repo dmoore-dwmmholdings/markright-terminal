@@ -32,6 +32,25 @@ import XCTest
         app.buttons["finish-editing"].tap(); app.buttons["preview-0"].tap()
         XCTAssertEqual(app.textViews["source-editor-0"].value as? String, source)
     }
+    func testWholeDocumentSourceCanEditAndReturnWithoutLosingMarkdown() {
+        let app = XCUIApplication(); app.launch()
+        let sourceButton = app.buttons["show-document-source"]
+        XCTAssertTrue(sourceButton.waitForExistence(timeout: 10)); sourceButton.tap()
+        let editor = app.textViews["document-source-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        let original = editor.value as? String ?? ""
+        XCTAssertTrue(original.contains("# Markright Terminal\nNative **preview** example"))
+        XCTAssertTrue(original.contains("```swift\nlet value = 42\n```"))
+        XCTAssertTrue(original.contains("| Field | Value |"))
+        editor.tap(); editor.typeText(" literal -- \"source\" ")
+        let changed = editor.value as? String ?? ""
+        XCTAssertTrue(changed.contains(" literal -- \"source\" "))
+        XCTAssertEqual(changed.replacingOccurrences(of: " literal -- \"source\" ", with: ""), original)
+        app.buttons["finish-editing"].tap()
+        XCTAssertTrue(app.buttons["preview-0"].waitForExistence(timeout: 5))
+        sourceButton.tap()
+        XCTAssertEqual(app.textViews["document-source-editor"].value as? String, changed)
+    }
 
     func testPreviewAccessibilityAudit() throws {
         let app = XCUIApplication(); app.launch()

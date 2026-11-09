@@ -13,6 +13,9 @@ struct SourceBlock: Identifiable, Equatable {
     var blocks: [SourceBlock]
     var active: Int?
     var composing = false
+    var sourceMode = false
+    var documentSource = ""
+    private(set) var editingGeneration = 0
     static let sample = "# Markright Terminal\nNative **preview** example\n\n```swift\nlet value = 42\n```\n\n| Field | Value |\n| --- | --- |\n| status | ready |\n\nUnicode 😀 and café"
     static var launchSource: String {
         if ProcessInfo.processInfo.arguments.contains("--large-document") {
@@ -65,9 +68,39 @@ struct SourceBlock: Identifiable, Equatable {
         lines.append((String(scalars[start..<scalars.endIndex]), ""))
         return lines
     }
-    var source: String { blocks.map { $0.source + $0.separatorAfter }.joined() }
-    func activate(_ id: Int) { if !composing { active = id } }
-    func finish() { if !composing { active = nil } }
+    var source: String { sourceMode ? documentSource : blocks.map { $0.source + $0.separatorAfter }.joined() }
+    func activate(_ id: Int) {
+        guard !composing && !sourceMode else { return }
+        if active != id { editingGeneration += 1 }
+        active = id
+    }
+    func showSource() {
+        guard !composing && !sourceMode else { return }
+        documentSource = source
+        editingGeneration += 1
+        active = nil
+        sourceMode = true
+    }
+    func updateDocumentSource(_ value: String, composing: Bool, generation: Int) {
+        guard sourceMode && generation == editingGeneration else { return }
+        self.composing = composing
+        documentSource = value
+    }
+    func updateBlockFromEditor(_ id: Int, _ value: String, composing: Bool, generation: Int) {
+        guard !sourceMode && active == id && generation == editingGeneration else { return }
+        self.composing = composing
+        update(id, value)
+    }
+    func finish() {
+        guard !composing else { return }
+        editingGeneration += 1
+        if sourceMode {
+            blocks = EditorModel(source: documentSource).blocks
+            sourceMode = false
+            documentSource = ""
+        }
+        active = nil
+    }
     func update(_ id: Int, _ source: String) {
         guard let index = blocks.firstIndex(where: {$0.id == id}) else { return }
         blocks[index].source = source
@@ -77,6 +110,7 @@ struct SourceBlock: Identifiable, Equatable {
 struct NativeSourceEditor: UIViewRepresentable {
     let value: String
     let id: Int
+    var wholeDocument = false
     let onChange: (String, Bool) -> Void
     func makeCoordinator() -> Coordinator { Coordinator(onChange: onChange) }
     func makeUIView(context: Context) -> UITextView {
@@ -84,7 +118,7 @@ struct NativeSourceEditor: UIViewRepresentable {
         view.font = UIFont.preferredFont(forTextStyle: .body)
         view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .secondarySystemBackground
-        view.isScrollEnabled = false
+        view.isScrollEnabled = wholeDocument
         // Raw source must not be rewritten by prose-oriented keyboard services.
         view.smartQuotesType = .no
         view.smartDashesType = .no
@@ -92,8 +126,8 @@ struct NativeSourceEditor: UIViewRepresentable {
         view.autocorrectionType = .no
         view.autocapitalizationType = .none
         view.spellCheckingType = .no
-        view.accessibilityIdentifier = "source-editor-\(id)"
-        view.accessibilityLabel = "Source for block \(id)"
+        view.accessibilityIdentifier = wholeDocument ? "document-source-editor" : "source-editor-\(id)"
+        view.accessibilityLabel = wholeDocument ? "Document Markdown source" : "Source for block \(id)"
         view.text = value
         view.delegate = context.coordinator
         return view
@@ -133,11 +167,17 @@ struct EditorScreen: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     Text("Interaction prototype. Not a complete Markdown editor.").font(.caption).foregroundStyle(.primary)
+                    if model.sourceMode {
+                        let generation = model.editingGeneration
+                        NativeSourceEditor(value: model.documentSource, id: -1, wholeDocument: true) { value, composing in
+                            model.updateDocumentSource(value, composing: composing, generation: generation)
+                        }.frame(height: 500)
+                    } else {
                     ForEach(model.blocks) { block in
                         if model.active == block.id {
+                            let generation = model.editingGeneration
                             NativeSourceEditor(value: block.source, id: block.id) { value, composing in
-                                model.composing = composing
-                                model.update(block.id, value)
+                                model.updateBlockFromEditor(block.id, value, composing: composing, generation: generation)
                             }.frame(minHeight: block.atomic ? 150 : 64)
                         } else {
                             Button { model.activate(block.id) } label: {
@@ -152,14 +192,23 @@ struct EditorScreen: View {
                             .accessibilityHint("Double tap to edit source")
                         }
                     }
+                    }
                 }.padding()
             }
             .navigationTitle("Markright spike")
             .safeAreaInset(edge: .bottom) {
-                Button("Done editing") { model.finish() }
+                HStack {
+                    if !model.sourceMode {
+                        Button("Source") { model.showSource() }
+                            .accessibilityIdentifier("show-document-source")
+                            .accessibilityHint("Edit the complete Markdown document")
+                            .disabled(model.composing)
+                    }
+                    Button("Done editing") { model.finish() }
+                        .accessibilityIdentifier("finish-editing").disabled(model.composing)
+                }
                     .font(.body).buttonStyle(.borderedProminent).controlSize(.large)
                     .tint(Color(red: 0.35, green: 0.25, blue: 0.05))
-                    .accessibilityIdentifier("finish-editing").disabled(model.composing)
                     .padding()
             }
         }
