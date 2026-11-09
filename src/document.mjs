@@ -2,13 +2,15 @@ import {unified} from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import {scan} from './scan.mjs';
+import {formatProfile} from './format.mjs';
 const parser = unified().use(remarkParse).use(remarkGfm);
 /** Reference-parser spike. Returns AST/source only, never renders HTML or runs code. */
 export function analyze(source, options = {}) {
   // Apply quota/type validation before parser allocation.
   scan(source, {...options, extension:'.md'});
   const markdown = parser.parse(source);
-  if (options.extension && options.extension !== '.mrk') return {source, markdown, nodes:[], diagnostics:[]};
+  const profile=formatProfile(source,options.extension);
+  if(!profile.enabled)return {source,markdown,nodes:[],diagnostics:profile.diagnostics,formatVersion:profile.version};
   const blocked = [];
   for (const node of markdown.children) {
     const isExtensionFence = node.type === 'code' && ['markright-data','markright-js'].includes(node.lang);
@@ -29,7 +31,7 @@ export function analyze(source, options = {}) {
   for(const [start,end] of blocked)for(let i=start;i<end;i++)if(chars[i]!=='\r'&&chars[i]!=='\n')chars[i]=' ';
   // Markdown punctuation inside an extension attribute belongs to the extension.
   // Restore candidate lines only when their start is not inside another construct.
-  for(const match of source.matchAll(/^:{2,}[^\r\n]*/gm)){
+  for(const match of source.matchAll(/^\uFEFF?:{2,}[^\r\n]*/gm)){
     if(!ownedAt(match.index,blocked))for(let i=match.index;i<match.index+match[0].length;i++)chars[i]=source[i];
   }
   const masked=chars.join('');
@@ -53,7 +55,7 @@ export function analyze(source, options = {}) {
       protect(node);protectedRanges.sort((a,b)=>a[0]-b[0]);
       const start=node.position.start.offset;
       const raw=source.slice(start,node.position.end.offset);
-      for(const match of raw.matchAll(/:file\[([^\]\r\n]*)\]\{([^}\r\n]*)\}/g)){
+      for(const match of raw.matchAll(/:file\[([^\]\r\n]*)\]\{((?:[^}\"\r\n]|\"[^\"\r\n]*\")*)\}/g)){
         const position=start+match.index;
         if(ownedAt(position,protectedRanges))continue;
         let slashes=0;
@@ -70,5 +72,5 @@ export function analyze(source, options = {}) {
   }
   visit(markdown);
   result.nodes.sort((a,b)=>a.start-b.start);
-  return {...result,source,markdown};
+  return {...result,source,markdown,formatVersion:profile.version};
 }
