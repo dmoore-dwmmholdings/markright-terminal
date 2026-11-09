@@ -2,6 +2,14 @@
 
 Status: MRK-9 in progress, not UI acceptance.
 
+## Retained system-WebKit view teardown — November 9, 2026
+
+A delayed authored navigation reproduced a lifecycle gap: the old `stop()` cleared delegates while leaving its loaded page alive, allowing a retained view to reach the loopback trap and commit a response after teardown (TCP/nonempty-receive delta `[1, 1]`, `spikes/macos-editor/build/teardown-before-session-20261109.log`). The previous stale-`didFinish` check alone did not cover this.
+
+The research WebView now strongly owns a stopped-state refusal delegate, installs it before stopping loading, and refuses all covered native `load(URLRequest)` calls after stop. Controller callbacks are cleared/guarded; releasing the controller leaves the sentinel intact without a retain cycle. JavaScript is still alive: this is navigation/dialog lifecycle hardening, not process termination or network isolation.
+
+Ten scoped offscreen groups pass (`build/teardown-source-final-20261109.log`), including an armed delayed attempt after controller release, exact source/URL retention, no additional application bytes, inert dialogs, repeated stop and rejected covered native loads. Observed teardown TCP delta zero is not a universal guarantee. Independent review found no blocking issue. Uncovered loaders/download/history APIs, already-started operations, speculative connections, VoiceOver, untrusted ingestion, physical/distribution and release acceptance remain open. Failed sandbox/compilation diagnostics and the before-fix evidence are retained; the visible Debug app and preview remain untouched.
+
 The first prototype separates authoritative source, AST, selection, and preview projection. Ordinary lines reveal source; touched fenced code/table blocks reveal their entire syntax. Nonempty selection ending at a line boundary does not consume the next line. Coordinates are UTF-16 half-open and reject surrogate splits. During marked-text composition the projection is deferred rather than rebuilding widgets or rewriting source. This is a model contract, not tested platform IME handling.
 
 A headless Swift 6.4.2/AppKit TextKit storage probe preserves four Unicode/CRLF cases under presentation attributes and UTF-16 insertions, including combining marks and multi-scalar emoji. No application window was opened. This does NOT prove native iOS TextKit, Liquid Glass, selection, undo, VoiceOver, or actual composition behavior.

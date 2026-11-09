@@ -4,7 +4,7 @@ import WebKit
 // Shared by the native research window and offscreen WebKit checks. All
 // diagnostics remain host-side; no native message handlers are registered.
 @MainActor final class BundledEditorController: NSObject, WKNavigationDelegate, WKUIDelegate {
-    let webView: WKWebView
+    let webView: BundledResearchWebView
     private(set) var loaded = false
     private(set) var blockedNavigations = 0
     private(set) var nativeRequestRejections = 0
@@ -56,9 +56,7 @@ import WebKit
     func stop() {
         stopped = true
         loaded = false
-        webView.stopLoading()
-        webView.navigationDelegate = nil
-        webView.uiDelegate = nil
+        webView.stopForTeardown()
         onStatus = nil
     }
 

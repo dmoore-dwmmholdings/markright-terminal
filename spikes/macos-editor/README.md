@@ -57,6 +57,18 @@ Swift warnings-as-errors app verification passes in the existing separate Verifi
 
 ## Verified checkpoint
 
+### Retained-view teardown follow-up
+
+The old teardown removed weak delegates while leaving the loaded page alive. An authored delayed navigation after `stop()` reached the loopback trap and committed its response: TCP/nonempty-receive deltas `[1, 1]` in `build/teardown-before-session-20261109.log`. The old stale-callback assertion passed despite this gap.
+
+`BundledResearchWebView` now owns a deny-all navigation/UI delegate, installs it before `stopLoading()`, clears the host callback, and permanently refuses covered native `load(URLRequest)` calls after teardown, including the otherwise allowed fixture. The delegate survives controller release without retaining the controller. This does **not** terminate JavaScript.
+
+Ten scoped groups pass in `build/teardown-source-final-20261109.log`. The new regression retains the view after releasing its controller, arms an authored delayed navigation after teardown, verifies the attempt actually ran, and checks exact source/URL retention, suppressed dialogs, no stale status callback and no additional trap application bytes. Repeated stop and covered fixture/external native loads are checked. Teardown TCP delta was zero in this run; it remains a diagnostic, not an isolation invariant. Independent review found no blocking issue. Other native loaders/download/history APIs, already-started work, speculative connections and OS/process isolation remain open.
+
+The separate unused Verification app builds successfully with Swift warnings as errors (`build/teardown-host-session-verification-20261109.log`); the visible Debug product was preserved. Fourteen pure policy checks still pass. Reused Mac build storage is now about 306 MiB, versus 291 MiB before this checkpoint, with 23 GiB shared free space at verification.
+
+The initial sandbox probe aborted during AppKit registration before checks ran; the initial app verification hit SwiftUI macro sandbox restrictions. Session runs are recorded separately. A warnings-as-errors compiler diagnostic in the first regression draft was corrected before the passing run; failed logs remain preserved. No visible window, VoiceOver, simulator, user document or production service was used by these checks.
+
 The unsigned arm64 app builds on macOS 26.6.2 with `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`. Fourteen pure Foundation navigation-policy checks pass. A native-window observation confirms the app loads its bundled fixture in system WKWebView, including the editor's formatted inactive text; the window was raised and a fresh screenshot verified. This is an actual local `.app` window, separate from the loopback browser preview. The configured macOS 14 deployment target is experimental, not tested minimum-OS acceptance.
 
 The shared-controller refactor also builds with warnings as errors into `build/Build/Products/Verification/MarkrightMacEditorSpike.app`, keeping the existing Debug product/window untouched. Regenerate the Xcode project after adding source files. The integration and verification builds reuse owned resources; the build directory most recently measured 290 MiB, compared with an earlier 199 MiB checkpoint.

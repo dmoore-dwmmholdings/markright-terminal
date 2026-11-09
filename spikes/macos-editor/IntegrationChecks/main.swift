@@ -234,10 +234,47 @@ private final class LoopbackTrap: @unchecked Sendable {
                 "Offscreen checks activated the app or showed a native window")
     controller.stop()
     controller.webView(view, didFinish: nil)
-    try require(!controller.loaded && view.navigationDelegate == nil && view.uiDelegate == nil,
+    try require(!controller.loaded && view.navigationDelegate != nil && view.navigationDelegate !== controller && view.uiDelegate != nil,
                 "Stopped controller accepted a stale navigation callback")
     print("PASS native dialog suppression and one-shot teardown")
-    print("Passed 9 scoped offscreen system-WKWebView integration checks. No OS keyboard/clipboard, VoiceOver, latency or full network/security acceptance claimed.")
+
+    var teardownStatusCalls = 0
+    var retiring: BundledEditorController? = BundledEditorController(pageURL: page, onStatus: { _ in teardownStatusCalls += 1 })
+    weak let releasedController = retiring
+    let retiredView = retiring!.webView
+    retiredView.frame = NSRect(x: 0, y: 0, width: 1024, height: 760)
+    retiring!.load()
+    try await waitUntil("teardown fixture") { retiring?.loaded == true }
+    let retiringSource = try await javascript(retiredView, "return window.spike.source();")
+    _ = try await javascript(retiredView, """
+        window.teardownArmed = false; window.teardownAttempted = false;
+        function attempt() {
+            if (!window.teardownArmed) { setTimeout(attempt, 20); return; }
+            window.teardownAttempted = true; window.location.assign(url);
+        }
+        setTimeout(attempt, 20); return 'scheduled';
+        """, ["url": target])
+    let teardownBaseline = trap.counts, statusBaseline = teardownStatusCalls
+    retiring!.stop()
+    retiring!.stop() // Idempotence must not drop the view-owned refusal delegates.
+    retiring!.load() // A stopped controller cannot restart itself.
+    retiring = nil
+    try require(releasedController == nil, "Teardown view retained its controller")
+    try require(retiredView.load(URLRequest(url: page)) == nil && retiredView.load(URLRequest(url: URL(string: target)!)) == nil,
+                "Stopped view accepted a covered native request")
+    let retiredDialogs = try await javascript(retiredView, "alert('retired'); window.teardownArmed = true; return JSON.stringify([confirm('retired'), prompt('retired')]);")
+    // Wait in the page's own timer queue so the earlier authored attempt ran.
+    let retiredState = try await javascript(retiredView, "await new Promise(resolve => setTimeout(resolve, 250)); return window.teardownAttempted ? window.location.href : 'not-attempted';")
+    let retiredSource = try await javascript(retiredView, "return window.spike.source();")
+    try require(retiredDialogs == "[false,null]" && retiredState == page.absoluteString && retiredSource == retiringSource,
+                "Retained stopped page navigated or failed to suppress dialogs")
+    try require(trap.counts[1] == teardownBaseline[1] && teardownStatusCalls == statusBaseline,
+                "Stopped page sent request bytes or emitted a stale status callback")
+    try require(retiredView.navigationDelegate != nil && retiredView.uiDelegate != nil && !NSApplication.shared.isActive && NSApplication.shared.windows.allSatisfy { !$0.isVisible },
+                "Teardown lost refusal delegates or showed native UI")
+    print("PASS retained-view teardown after controller release: delayed script navigation refused, dialogs suppressed, covered native loads rejected, no stale status or additional application bytes")
+    print("OBSERVATION: teardown TCP delta=\(trap.counts[0] - teardownBaseline[0]); JavaScript remains alive and process/network isolation is not established.")
+    print("Passed 10 scoped offscreen system-WKWebView integration checks. No OS keyboard/clipboard, VoiceOver, latency or full network/security acceptance claimed.")
 }
 
 @main private enum IntegrationChecks {
