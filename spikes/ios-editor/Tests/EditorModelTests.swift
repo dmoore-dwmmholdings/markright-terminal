@@ -19,6 +19,61 @@ import UIKit
         m.update(1, "😀 edited\nnew line")
         XCTAssertEqual(m.source,"first\n😀 edited\nnew line\nlast")
     }
+    func testEveryPhysicalLineEndingGroupsTheSameBlocksWithoutRewritingBytes() {
+        for ending in ["\n", "\r\n", "\r"] {
+            let source = ["before", "```swift", "value", "```", "|a|b|", "|-|-|", "|x|y|", "after", ""].joined(separator: ending)
+            let model = EditorModel(source: source)
+            XCTAssertEqual(Array(model.source.utf8), Array(source.utf8))
+            XCTAssertEqual(model.blocks.map(\.id), [0, 1, 4, 7, 8])
+            XCTAssertEqual(model.blocks.filter(\.atomic).count, 2)
+            XCTAssertEqual(model.blocks[1].source, ["```swift", "value", "```"].joined(separator: ending))
+            XCTAssertEqual(model.blocks[1].separatorAfter, ending)
+        }
+    }
+    func testMixedEndingsAndBOMSurviveEditingAnOrdinaryBlock() {
+        let source = "\u{FEFF}first\r\n**middle**\rlast\n"
+        let model = EditorModel(source: source)
+        XCTAssertEqual(model.blocks.map(\.source), ["\u{FEFF}first", "**middle**", "last", ""])
+        model.update(1, "😀 edited\nnew line")
+        let expected = "\u{FEFF}first\r\n😀 edited\nnew line\rlast\n"
+        XCTAssertEqual(Array(model.source.utf8), Array(expected.utf8))
+        XCTAssertEqual(model.blocks.map(\.separatorAfter), ["\r\n", "\r", "\n", ""])
+    }
+    func testMixedAtomicBlockEndingsAndEmptyEOFRemainExact() {
+        for source in ["", "\r\n", "\r", "\n", "```swift\r\nvalue\r```\nafter\r\n", "```swift\r\nvalue\r"] {
+            let model = EditorModel(source: source)
+            XCTAssertEqual(Array(model.source.utf8), Array(source.utf8))
+        }
+        let model = EditorModel(source: "before\r```swift\r\nvalue\r```\nafter\r\n")
+        model.update(1, "```swift\r\nchanged\r```")
+        XCTAssertEqual(Array(model.source.utf8), Array("before\r```swift\r\nchanged\r```\nafter\r\n".utf8))
+    }
+    func testNativeTextViewAtomicEditPreservesMixedEndingsAndNeighbors() throws {
+        let source = "\u{FEFF}before 😀\r\n```swift\r\nvalue\r```\nafter e\u{301}\r"
+        let model = EditorModel(source: source)
+        let block = model.blocks[1]
+        XCTAssertTrue(block.atomic)
+        let view = UITextView()
+        view.text = block.source
+        let coordinator = NativeSourceEditor.Coordinator { value, composing in
+            model.composing = composing
+            model.update(block.id, value)
+        }
+        view.delegate = coordinator
+        XCTAssertEqual(Array(view.text.utf8), Array(block.source.utf8))
+        let valueRange = (view.text as NSString).range(of: "value")
+        XCTAssertNotEqual(valueRange.location, NSNotFound)
+        let start = try XCTUnwrap(view.position(from: view.beginningOfDocument, offset: valueRange.location))
+        let end = try XCTUnwrap(view.position(from: start, offset: valueRange.length))
+        let range = try XCTUnwrap(view.textRange(from: start, to: end))
+        view.replace(range, withText: "changed 😀")
+        coordinator.textViewDidChange(view)
+        let expected = "\u{FEFF}before 😀\r\n```swift\r\nchanged 😀\r```\nafter e\u{301}\r"
+        XCTAssertEqual(Array(model.source.utf8), Array(expected.utf8))
+        XCTAssertEqual(model.blocks[0].source, "\u{FEFF}before 😀")
+        XCTAssertEqual(model.blocks[2].source, "after e\u{301}")
+        XCTAssertFalse(model.composing)
+    }
     func testNativeMarkedTextDefersPreviewUntilCommitted() {
         let model = EditorModel(source: "source"); model.activate(0)
         let view = UITextView(); view.text = "source"

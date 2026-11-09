@@ -65,3 +65,40 @@ test('empty EOF inside an unclosed fence stays in the source block',async({page}
  expect(await page.evaluate(source=>{spike.setSource(source);spike.select(source.length);return spike.active();},quote)).toEqual({from:quote.length,to:quote.length});
  expect(await page.evaluate(source=>{spike.setSource(source);spike.select(source.length);return spike.active();},list)).toEqual({from:list.indexOf('```'),to:list.length});
 });
+test('mixed source endings survive native typing, selection mapping and undo',async({page})=>{
+ const source='\uFEFF# Heading\r\n\rA **bold** line\n\n```js\rx\r\n```\r\n';
+ await page.evaluate(source=>spike.setSource(source),source);
+ expect(await page.evaluate(()=>spike.source())).toBe(source);
+ const target=source.indexOf('bold');
+ await page.evaluate(target=>{spike.select(target);spike.focus();},target);
+ await page.keyboard.type('X');
+ expect(await page.evaluate(()=>spike.source())).toBe(source.slice(0,target)+'X'+source.slice(target));
+ await page.keyboard.press(process.platform==='darwin'?'Meta+z':'Control+z');
+ expect(await page.evaluate(()=>spike.source())).toBe(source);
+ const active=await page.evaluate(()=>{spike.select(spike.source().indexOf('\rx')+1);return spike.active();});
+ expect(active.from).toBe(source.indexOf('```js'));expect(active.to).toBe(source.lastIndexOf('```')+3);
+});
+test('delivered paste strings retain mixed endings through replacement, undo and redo',async({page})=>{
+ const source='before\r\nreplace\rafter\n',insert='A\rB\nC\r\n😀';
+ await page.evaluate(({source,insert})=>{
+  spike.setSource(source);spike.select(source.indexOf('replace'),source.indexOf('after'));spike.focus();
+  const data=new DataTransfer();data.setData('text/plain',insert);
+  document.querySelector('.cm-content').dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));
+ },{source,insert});
+ const expected='before\r\n'+insert+'after\n';
+ expect(await page.evaluate(()=>spike.source())).toBe(expected);
+ await page.keyboard.press(process.platform==='darwin'?'Meta+z':'Control+z');
+ expect(await page.evaluate(()=>spike.source())).toBe(source);
+ await page.keyboard.press(process.platform==='darwin'?'Meta+Shift+z':'Control+Shift+z');
+ expect(await page.evaluate(()=>spike.source())).toBe(expected);
+});
+test('joining adjacent CR and LF keeps preview offsets and undo consistent',async({page})=>{
+ const source='a\rX\nb';
+ await page.evaluate(source=>{spike.setSource(source);spike.select(2,3);spike.focus();},source);
+ await page.keyboard.press('Backspace');
+ expect(await page.evaluate(()=>spike.source())).toBe('a\r\nb');
+ const active=await page.evaluate(()=>{spike.select(3);return spike.active();});
+ expect(active).toEqual({from:3,to:4});
+ await page.keyboard.press(process.platform==='darwin'?'Meta+z':'Control+z');
+ expect(await page.evaluate(()=>spike.source())).toBe(source);
+});

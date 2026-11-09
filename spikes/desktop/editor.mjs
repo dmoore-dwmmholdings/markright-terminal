@@ -1,9 +1,10 @@
-import {EditorState,StateEffect} from '@codemirror/state';
+import {StateEffect} from '@codemirror/state';
 import {EditorView,Decoration,ViewPlugin,keymap} from '@codemirror/view';
 import {markdown} from '@codemirror/lang-markdown';
 import {syntaxTree} from '@codemirror/language';
 import {history,historyKeymap,defaultKeymap} from '@codemirror/commands';
 import {GFM} from '@lezer/markdown';
+import {sourceState,sourceText,sourceChange,toEditorOffset,toSourceOffset} from './source-buffer.mjs';
 const refresh=StateEffect.define();
 function activeSource(view){
  const selection=view.state.selection.main;
@@ -43,6 +44,15 @@ const projection=ViewPlugin.fromClass(class{
  }
 },{decorations:value=>value.decorations});
 const sample='# Markright Terminal\n\nA **bold** preview with *emphasis* and ~~removed~~ text.\n\n```js\nconst register = 42;\n```\n\n| Field | Value |\n| --- | --- |\n| status | ready |\n';
-const view=new EditorView({parent:document.querySelector('#editor'),state:EditorState.create({doc:sample,extensions:[history(),keymap.of([...defaultKeymap,...historyKeymap]),markdown({extensions:GFM}),projection,EditorView.lineWrapping,EditorView.contentAttributes.of({'aria-label':'Markright source editor',spellcheck:'false',autocorrect:'off',autocapitalize:'off'}),EditorView.domEventHandlers({compositionend(){setTimeout(()=>view.dispatch({effects:refresh.of(null)}),0);return false;}})]})});
+function createState(source){return sourceState(source,[history(),keymap.of([...defaultKeymap,...historyKeymap]),markdown({extensions:GFM}),projection,EditorView.lineWrapping,EditorView.contentAttributes.of({'aria-label':'Markright source editor',spellcheck:'false',autocorrect:'off',autocapitalize:'off'}),EditorView.domEventHandlers({
+ compositionend(){setTimeout(()=>view.dispatch({effects:refresh.of(null)}),0);return false;},
+ paste(event,view){
+  if(!event.clipboardData||!Array.from(event.clipboardData.types).includes('text/plain')||view.state.selection.ranges.length!==1)return false;
+  const selection=view.state.selection.main;
+  view.dispatch(sourceChange(view.state,selection.from,selection.to,event.clipboardData.getData('text/plain')));
+  event.preventDefault();return true;
+ }
+})]);}
+const view=new EditorView({parent:document.querySelector('#editor'),state:createState(sample)});
 // Test-only local harness. No document code is evaluated and no files are accessed.
-window.spike={source:()=>view.state.doc.toString(),select:(from,to=from)=>view.dispatch({selection:{anchor:from,head:to},scrollIntoView:true}),setSource:source=>view.dispatch({changes:{from:0,to:view.state.doc.length,insert:source},selection:{anchor:0}}),active:()=>activeSource(view),focus:()=>view.focus()};
+window.spike={source:()=>sourceText(view.state),select:(from,to=from)=>view.dispatch({selection:{anchor:toEditorOffset(view.state,from),head:toEditorOffset(view.state,to)},scrollIntoView:true}),setSource:source=>view.setState(createState(source)),active:()=>{const range=activeSource(view);return {from:toSourceOffset(view.state,range.from),to:toSourceOffset(view.state,range.to)};},focus:()=>view.focus()};

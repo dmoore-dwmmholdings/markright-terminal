@@ -5,6 +5,8 @@ import UIKit
 struct SourceBlock: Identifiable, Equatable {
     let id: Int
     var source: String
+    // The boundary belongs to the source document, not the editable block text.
+    let separatorAfter: String
     let atomic: Bool
 }
 @MainActor @Observable final class EditorModel {
@@ -19,24 +21,51 @@ struct SourceBlock: Identifiable, Equatable {
         return sample
     }
     init(source: String) {
-        let lines = source.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        let lines = Self.physicalLines(source)
         var groups: [SourceBlock] = []
         var i = 0
         while i < lines.count {
             let start = i
-            let fence = lines[i].hasPrefix("```")
-            let table = lines[i].hasPrefix("|")
+            let fence = lines[i].text.hasPrefix("```")
+            let table = lines[i].text.hasPrefix("|")
             i += 1
             if fence {
-                while i < lines.count { let close = lines[i].hasPrefix("```"); i += 1; if close { break } }
+                while i < lines.count { let close = lines[i].text.hasPrefix("```"); i += 1; if close { break } }
             } else if table {
-                while i < lines.count && lines[i].hasPrefix("|") { i += 1 }
+                while i < lines.count && lines[i].text.hasPrefix("|") { i += 1 }
             }
-            groups.append(SourceBlock(id: start, source: lines[start..<i].joined(separator: "\n"), atomic: fence || table))
+            let body = lines[start..<i].enumerated().map { offset, line in
+                line.text + (offset < i - start - 1 ? line.ending : "")
+            }.joined()
+            groups.append(SourceBlock(id: start, source: body, separatorAfter: lines[i - 1].ending, atomic: fence || table))
         }
         blocks = groups
     }
-    var source: String { blocks.map(\.source).joined(separator: "\n") }
+    // Split scalars rather than Characters: Swift treats CRLF as one grapheme.
+    // Only LF/CRLF/CR are document line endings; other Unicode scalars stay text.
+    private static func physicalLines(_ source: String) -> [(text: String, ending: String)] {
+        let scalars = source.unicodeScalars
+        var start = scalars.startIndex
+        var cursor = start
+        var lines: [(text: String, ending: String)] = []
+        while cursor < scalars.endIndex {
+            if scalars[cursor] == "\r" || scalars[cursor] == "\n" {
+                let boundary = cursor
+                let carriageReturn = scalars[cursor] == "\r"
+                scalars.formIndex(after: &cursor)
+                if carriageReturn && cursor < scalars.endIndex && scalars[cursor] == "\n" {
+                    scalars.formIndex(after: &cursor)
+                }
+                lines.append((String(scalars[start..<boundary]), String(scalars[boundary..<cursor])))
+                start = cursor
+            } else {
+                scalars.formIndex(after: &cursor)
+            }
+        }
+        lines.append((String(scalars[start..<scalars.endIndex]), ""))
+        return lines
+    }
+    var source: String { blocks.map { $0.source + $0.separatorAfter }.joined() }
     func activate(_ id: Int) { if !composing { active = id } }
     func finish() { if !composing { active = nil } }
     func update(_ id: Int, _ source: String) {
