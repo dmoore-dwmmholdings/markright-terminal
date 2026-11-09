@@ -8,6 +8,8 @@ Local feasibility workspace for Disegno MRK v2, Andare MRK-8 through MRK-11. Thi
 - Native parser comparison: `cargo run --locked --manifest-path spikes/native-parser/Cargo.toml` (optional `-- --diffs`).
 - macOS headless TextKit storage: `swift spikes/native-editor/source-mapping.swift`.
 - Headless 1 MB projection measurement: `node scripts/measure-editor.mjs`.
+- Standalone macOS WebKit research app: build instructions and exact limitations in `spikes/macos-editor/README.md`.
+- Native Swift phone/tablet interaction and whole-source fallback: `spikes/ios-editor/README.md`.
 
 Use a supported Node.js 22+ installation; verification runs use Node.js 24.
 
