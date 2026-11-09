@@ -48,3 +48,25 @@ Desktop review reproduced a caret-at-atomic-block-end defect in both engines. Bo
 ### Automated accessibility findings and corrections
 
 Native `.all` preview-screen audits initially failed on touch target size, caption/button contrast and toolbar Dynamic Type. Each was fixed rather than filtered: minimum 44-point preview targets, primary caption contrast, and a body-font bottom action with high-contrast tint. The full phone and tablet suites now each pass five native plus four UI tests, including both light and dark audits. Actual VoiceOver navigation, active-editor auditing and real keyboard composition/scroll-away remain explicit downstream validation needs. The line-button prototype's larger touch spacing is also a UX tradeoff to resolve in the integrated editor, not a frozen final layout.
+
+## Shell/core comparison and research recommendation
+
+| Option | Fit | Tradeoff and decision |
+| --- | --- | --- |
+| Tauri + CodeMirror desktop, Rust core | Existing Rust parser candidates, source-authoritative web editor, narrow capability bridge | Recommended for the next desktop implementation experiment, not selected/frozen until MRK-12. System webview differences require Windows WebView2/Linux WebKitGTK acceptance. Current Chromium/WebKit tests on Mac do not prove those shells. |
+| Electron + CodeMirror | Consistent bundled Chromium and mature worker process tooling | Valid fallback if system-webview parity or packaging fails. Larger bundled runtime/update surface; strict sandbox/context isolation still required. No footprint claims are measured in this spike. |
+| Fully native per-desktop-platform editor | Native accessibility/input conventions | Reject as first shared desktop path: three editor integrations multiply source-map/IME/undo work. Could revisit for evidenced platform failures, not preference alone. |
+| SwiftUI + UITextView/TextKit iOS, narrow Rust bridge | Native iOS UI/Liquid Glass direction, demonstrated source edits and marked-text callbacks | Carry forward as native candidate. Fixture grouping is not a production Markdown renderer; bridge/structural reparsing and real VoiceOver remain unresolved. Do not replace with desktop web wrapper. |
+
+Shared core recommendation: prototype Comrak through a narrow versioned Rust API for parser/source coordinates, with JS reference fixtures as compatibility oracle rather than two independently evolving language definitions. Keep filesystem grants, key storage, renderer and UI services outside parsing. Rust proof is a command-line comparison, not an already integrated Swift/Tauri bridge. FFI must handle cancellation, UTF-8 ownership/lifetime and error bounds without throwing across ABI boundaries.
+
+## Consolidated editor source contract
+
+- The original source is authoritative. Preview is a projection of an immutable revision, not a source reconstruction. Parse results carry revision identity; discard stale results after edits.
+- UI positions are zero-based UTF-16 half-open ranges. Reject surrogate-splitting selections; convert native UTF-8 positions explicitly and treat missing ranges as unmappable rather than guessing.
+- Activate the current line except when source belongs to an atomic fence/table, where the enclosing block is active. Exact end-of-block and next-line-start ownership must be distinct (desktop boundary regression now covers both).
+- Map decorations through edits while composing; do not replace active marked text or change smart punctuation. Commit/unmark deliberately at teardown. Actual input-method navigation remains separate from programmatic marked-text probes.
+- Edits, undo and selection operate on source first. Preview changes cannot enter undo history as text mutations. Source export/save retains original BOM/line-ending policy, including untouched neighbors.
+- Background/incremental parsing plus cached range indexes is required for large documents. Measured 1 MB parse time of approximately1–4 seconds rules out whole-document synchronous keystroke parsing. Indexed lookup p95 approximately0.012 ms is a model lookup, NOT end-to-end input latency. No p95 paint target has passed.
+
+Latest evidence: desktop15 passing browser tests/1explicit WebKit CDP-IME skip; both native phone/tablet5 native+4 UI passes, including all automated accessibility audit types in light/dark preview. An actual attended VoiceOver experiment is outstanding and keeps MRK-9 open. The plan in `mrk9-attended-voiceover-plan.md` defines stop/restore rules and observations. Further native cross-block selection/undo, real keyboard composition/scroll-away, full Markdown semantics and performance remain recorded limitations. MRK-12 must evaluate these findings before freezing contracts; downstream MRK-20/21/26/27/33 still own complete product/platform acceptance.
