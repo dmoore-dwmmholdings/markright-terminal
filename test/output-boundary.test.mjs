@@ -21,3 +21,10 @@ test('declarative decoder refuses unknown operations, overlaps and bad inputs', 
   for (const input of ['-1','1.5','01','0x','18446744073709551616','1+2']) assert.throws(()=>decodeBitfields(spec([field]),input));
   assert.throws(()=>decodeBitfields('{"kind":"download-script","bits":64,"fields":[]}','0'));
 });
+
+test('integer schema validates original JSON numeric tokens before rounding', () => {
+  for (const token of ['0.99999999999999999','64.00000000000000001','1e0','-0','9007199254740993']) {
+    const source = spec([field]).replace('"width":64','"width":'+token);
+    assert.throws(()=>decodeBitfields(source,'0'));
+  }
+});

@@ -10,7 +10,7 @@ export function strictJSON(source) {
     onObjectBegin: () => begin(new Set()), onArrayBegin: () => begin(null),
     onObjectEnd: () => stack.pop(), onArrayEnd: () => stack.pop(),
     onObjectProperty: key => { count(); const keys = stack.at(-1); if (!keys || keys.has(key) || ['__proto__','constructor','prototype'].includes(key)) fail(); keys.add(key); },
-    onLiteralValue: value => { count(); if ((typeof value === 'string' && value.length > 4096) || (typeof value === 'number' && !Number.isFinite(value))) fail(); },
+    onLiteralValue: (value, offset, length) => { count(); if (typeof value === 'number' && (!/^(?:0|[1-9][0-9]*)$/.test(source.slice(offset, offset + length)) || !Number.isSafeInteger(value))) fail(); if ((typeof value === 'string' && value.length > 4096) || (typeof value === 'number' && !Number.isFinite(value))) fail(); },
     onError: fail,
   }, { disallowComments: true, allowTrailingComma: false, allowEmptyContent: false });
   return JSON.parse(source);
