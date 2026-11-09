@@ -33,3 +33,28 @@ A separate Node worker initializes QuickJS with no cooperative interrupt handler
 ### Heap-evidence correction from independent review
 
 The initial growing-array test could stop by CPU interruption, so it did not establish allocator enforcement by itself. The harness now retains error names/messages, labels that test as interruption-or-OOM, and separately requests a finite 16 MiB ArrayBuffer under the 8 MiB heap cap. That test explicitly requires `InternalError` with `out of memory`. The earlier broad heap-verification wording should be read only with this added allocator-specific evidence. A configured cap alone is not a proven cap; worker termination remains separate from memory verification.
+
+## Runtime comparison and proposed research decision
+
+| Candidate | Strength | Constraint / disposition |
+| --- | --- | --- |
+| QuickJS WASM in a desktop worker | Explicit allocator/stack/interrupt controls; tested termination, BigInt and absent ambient APIs | Carry forward for desktop prototype only. WASM overhead and native binary packaging still unmeasured. Worker is not OS isolation. |
+| Native QuickJS interpreter behind Swift/C | Interpreter architecture does not require JIT; same language family across platforms | Unbuilt candidate, not a demonstrated iOS binary. C memory safety, interrupt/allocator integration, signed packaging, device killability and App Review need MRK-28 review. Do not assume WASM test results apply to it. |
+| JavaScriptCore via public Apple API | System integration, native Swift/Objective-C bridge | Reject as the initial portable untrusted runtime: does not provide this spike's proven per-runtime heap/interrupt/kill contract, and is not a shared Windows/Linux solution. JIT availability is platform/entitlement-dependent; no entitlement should be requested to bypass policy. |
+| Fixed declarative decoder | Bounded field extraction, no user instructions, precise integers, portable static fallback | Carry forward on all platforms as a limited calculator candidate; not a general scripting replacement or App Store exemption. |
+
+The research recommendation is desktop QuickJS worker experimentation plus an iOS inert/declarative-first path, with native execution explicitly blocked on MRK-28. No downloaded native code, JIT entitlement or private API is proposed. Ship only bundled reviewed code; imported JavaScript stays inert on iOS pending that separate gate.
+
+### Proposed host profile 0.1 (not implemented)
+
+Each execution consumes a length-bounded UTF-8 JSON request containing a supported profile/runtime version, immutable source hash and declared input snapshots. Inputs include only explicitly selected typed document values, never host objects or a generic callback bridge. Version/hash/transitive-input changes invalidate local approval. Fresh runtime per execution; no context reuse. Reject dynamic import/module loading, eval/Function constructors, promises/jobs/async, Date/randomness, proxies and host I/O in the constrained language profile. A syntax allowlist plus removal of reachable intrinsics and absence of host capabilities must be independently reviewed: lexical filtering alone is not enforcement. Existing QuickJS probes have NOT implemented this restricted profile.
+
+The proposed response is one JSON string, at most 64 KiB, with an explicit version and an allowlisted text-only table shape. No raw objects, callable values, markup interpretation, URLs, event handlers, native handles or arbitrary actions cross the boundary. Validate byte length before parse, reject duplicate/prototype keys, bound nesting/nodes/strings and validate exact fields. Future control nodes require a separate versioned schema and explicit capability review. Bound serialization inside the guest before transferring bytes; the host validator alone does not prevent a guest allocating a huge serialized result. Enforce IPC frame size and process/worker quotas before host allocation in production.
+
+### Executed structured-output and declarative proof
+
+`spikes/runtime/output-boundary.mjs` uses pinned jsonc-parser 3.3.1 to preflight strict JSON (no comments/trailing commas, duplicate keys or prototype keys), with a 64 KiB input cap, depth 12, 4,096 visited values/properties/containers and 4,096 UTF-16-unit strings. Output permits only version 0.1 tables with 1–8 columns and at most 64 rows of plain strings. It is a test-only adapter, not wired to a renderer, IPC or runtime evaluation. HTML-looking cells are retained as text and MUST NOT be interpreted downstream.
+
+A `markright-data` JSON body may describe `kind: "markright.bitfields/0.1"`, `bits` (8/16/32/64) and fields containing exactly `id`, `label`, `lsb`, `width`, `signed`. The fixed evaluator takes a separate decimal/hex string, rejects overlaps/out-of-range/duplicate fields and returns validated table output. BigInt preserves unsigned 64-bit maximum and signed two's-complement results. Unsupported kinds/fields/versions produce a local diagnostic, leave source readable and never fall back to eval. This proposed data shape does not add a language directive, scrape document text or auto-run on open. A product UI, trust affordance, input controls and native implementation remain MRK-22–25/28 work.
+
+Four added tests cover strict JSON failure modes, output schema refusal, exact signed/unsigned 64-bit results, invalid operations/ranges/overlaps and malformed input. No crypto, native API, file/network bridge or production trust store is created. This demonstrates a bounded fallback computation, not complete runtime security acceptance.
