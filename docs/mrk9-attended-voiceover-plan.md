@@ -1,6 +1,6 @@
-# MRK-9: bounded attended VoiceOver experiment (not performed)
+# MRK-9: bounded VoiceOver experiment and observation gate
 
-MRK-9 stays open until this explicit experiment is run and recorded. Automated light/dark accessibility audits passed, but are not VoiceOver evidence. No one should enable a foreground screen reader unattended or disturb the user's active desktop.
+MRK-9 stays open until the required desktop and native iOS observations are run and recorded. Automated light/dark accessibility audits passed, but are not VoiceOver evidence. The approved Mac attempt below did not produce reliable observations. Any further unattended toggle requires a reliable observation plan; coordinate foreground ownership before acting. Attendance can supply the missing spoken-output evidence.
 
 ## Setup and boundaries
 

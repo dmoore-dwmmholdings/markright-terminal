@@ -1,6 +1,6 @@
 # ADR 0004: revision, encryption and enrollment protocol
 
-Status: MRK-11 in progress. Local model and demo-only emulator rules; no production Firebase project/deployment, real sync client or cryptography implementation.
+Status: MRK-11 completed as reviewed research. Local model and demo-only emulator rules; no production Firebase project/deployment, real sync client or cryptography implementation. MRK-29/31 retain implementation, security and provisioning gates.
 
 ## Revision publication
 

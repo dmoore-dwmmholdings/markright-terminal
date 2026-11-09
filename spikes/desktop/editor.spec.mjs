@@ -52,3 +52,16 @@ test('atomic EOF boundaries reveal the complete block but not a following empty 
   expect(empty.from).toBe(source.length+1);
  }
 });
+test('empty EOF inside an unclosed fence stays in the source block',async({page})=>{
+ for(const source of ['```js\nx\n','~~~\n','```\n\n','~~~\nx\n~~\n']){
+  const active=await page.evaluate(source=>{spike.setSource(source);spike.select(source.length);return spike.active();},source);
+  expect(active).toEqual({from:0,to:source.length});
+ }
+ for(const source of ['```\nx\n```\n','~~~\nx\n~~~~\n']){
+  const active=await page.evaluate(source=>{spike.setSource(source);spike.select(source.length);return spike.active();},source);
+  expect(active).toEqual({from:source.length,to:source.length});
+ }
+ const quote='> ```\n> x\n',list='- ```\n  x\n';
+ expect(await page.evaluate(source=>{spike.setSource(source);spike.select(source.length);return spike.active();},quote)).toEqual({from:quote.length,to:quote.length});
+ expect(await page.evaluate(source=>{spike.setSource(source);spike.select(source.length);return spike.active();},list)).toEqual({from:list.indexOf('```'),to:list.length});
+});

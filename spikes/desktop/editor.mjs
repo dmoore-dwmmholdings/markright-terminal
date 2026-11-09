@@ -12,7 +12,10 @@ function activeSource(view){
   for(const side of [-1,1]){
    let node=syntaxTree(view.state).resolveInner(position,side);
    for(;node;node=node.parent){
-    const inside=position<node.to||(position===node.to&&view.state.doc.lineAt(position).from<position);
+    // An unclosed fence owns the empty EOF line where its next body edit occurs.
+    // Closed fences end before that line; their second CodeMark also distinguishes them.
+    const openFenceEOF=position===view.state.doc.length&&position===node.to&&node.name==='FencedCode'&&node.getChildren('CodeMark').length===1;
+    const inside=position<node.to||(position===node.to&&view.state.doc.lineAt(position).from<position)||openFenceEOF;
     if(inside&&['FencedCode','CodeBlock','Table'].includes(node.name)){from=Math.min(from,node.from);to=Math.max(to,node.to);}
    }
   }

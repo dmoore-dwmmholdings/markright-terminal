@@ -1,9 +1,13 @@
 /** Experimental projection planner. Source is authoritative; no widgets or rendering. */
 export function createProjection(source, markdown) {
   const lines=[0], blocks=[];
+  let eofCodeStart;
   for(let i=0;i<source.length;i++){if(source[i]==='\r'){if(source[i+1]==='\n')i++;lines.push(i+1);}else if(source[i]==='\n')lines.push(i+1);}
   function visit(node){
     if(['table','code'].includes(node.type))blocks.push([node.position.start.offset,node.position.end.offset]);
+    // The reference parser includes the final empty EOF line in an unclosed
+    // fenced code node. Closed fences and indented code end before that line.
+    if(node.type==='code'&&node.position.end.offset===source.length&&lines.at(-1)===source.length)eofCodeStart=node.position.start.offset;
     for(const child of node.children??[])visit(child);
   }
   visit(markdown);blocks.sort((a,b)=>a[0]-b[0]);
@@ -24,6 +28,7 @@ export function createProjection(source, markdown) {
   for(let i=lo;i<blocks.length&&blocks[i][0]<to;i++){
     const [a,b]=blocks[i];from=Math.min(from,a);to=Math.max(to,b);
   }
+  if(start===end&&start===source.length&&eofCodeStart!==undefined)from=Math.min(from,eofCodeStart);
   return {deferred:false,start:from,end:to,selection:{start,end}};
   };
 }

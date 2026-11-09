@@ -1,6 +1,6 @@
 # ADR 0003: constrained execution feasibility
 
-Status: MRK-10 In Progress. No production runtime selected or iOS permission asserted.
+Status: MRK-10 completed as reviewed research. No production runtime selected, security acceptance granted or iOS execution permission asserted. Dated evidence below records the research progression; MRK-22–25/28 retain implementation and review gates.
 
 ## Threat model
 

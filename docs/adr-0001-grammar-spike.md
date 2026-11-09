@@ -1,6 +1,6 @@
 # ADR 0001 — Extension grammar and compatibility corpus
 
-Status: experimental, MRK-8 in progress. References: MRK-R1–R5, Disegno MRK v2.
+Status: MRK-8 completed as reviewed research. Production parser/resolver/export acceptance remains MRK-13–17; MRK-12 integration is gated by MRK-9. References: MRK-R1–R5, Disegno MRK v2. Dated evidence below records the research progression, not current ticket status.
 
 ## Decision proposal
 
