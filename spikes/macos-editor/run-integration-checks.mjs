@@ -38,6 +38,7 @@ await requireHeadroom();
 await run('/usr/bin/xcrun', ['swiftc', '-swift-version', '6', '-warnings-as-errors', '-parse-as-library',
   '-module-cache-path', resolve(build, 'IntegrationModuleCache'),
   resolve(directory, 'Sources/BundledNavigationPolicy.swift'),
+  resolve(directory, 'Sources/BundledResearchWebView.swift'),
   resolve(directory, 'Sources/BundledEditorController.swift'),
   resolve(directory, 'IntegrationChecks/main.swift'), '-o', executable]);
 const binary = await stat(executable);

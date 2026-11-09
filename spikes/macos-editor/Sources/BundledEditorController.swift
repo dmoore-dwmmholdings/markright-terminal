@@ -7,6 +7,7 @@ import WebKit
     let webView: WKWebView
     private(set) var loaded = false
     private(set) var blockedNavigations = 0
+    private(set) var nativeRequestRejections = 0
     private(set) var blockedWindows = 0
     private(set) var suppressedDialogs = 0
 
@@ -19,8 +20,15 @@ import WebKit
         self.pageURL = pageURL
         self.policy = BundledNavigationPolicy(pageURL: pageURL)
         self.onStatus = onStatus
-        self.webView = WKWebView(frame: .zero, configuration: BundledEditorController.makeConfiguration())
+        let view = BundledResearchWebView(pageURL: pageURL, configuration: BundledEditorController.makeConfiguration())
+        self.webView = view
         super.init()
+        view.onRejectedNativeRequest = { [weak self] in
+            guard let self, !self.stopped else { return }
+            self.nativeRequestRejections += 1
+            self.blockedNavigations += 1
+            self.onStatus?("Rejected native navigation before WebKit; only the bundled research fixture is permitted.")
+        }
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = false

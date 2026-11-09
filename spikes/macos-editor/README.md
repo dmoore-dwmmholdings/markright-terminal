@@ -41,9 +41,19 @@ The runner rebuilds the editor with the pinned local esbuild through the current
 
 Eight scoped checks pass on the current Mac: bundled editor/nonpersistent state, delivered-string mixed-ending paste, inert document markup (including a deferred recheck), actual CSP connection denial, native/script navigation cancellation with source retained, scripted popup/subframe denial, native alert/confirm/prompt suppression and one-shot teardown. The positive WebKit fetch is included in the eight groups. The harness remains inactive and shows no visible windows; WebKit does create an invisible `TUINSWindow` helper.
 
-**Observed limitation:** cancelling a native-initiated external navigation opened one speculative TCP connection to the trap, while sending no HTTP request and retaining source. The script-initiated attempt made no extra connection/request in this run. Navigation cancellation is therefore **not network isolation**. The harness reports both counts and does not claim zero network activity for navigation. CSP's separate fetch-denial probe made zero additional trap connections. OS/process network isolation remains a security gate.
+**Observed limitation at the first checkpoint:** cancelling a raw native-initiated navigation opened one speculative TCP connection to the trap, while no application/request bytes were observed and source was retained. The script-initiated attempt made no extra connection in that run. Navigation cancellation is therefore **not network isolation**. The follow-up below hardens one native entrypoint without changing that conclusion. The trap's second counter counts nonempty receives, not parsed HTTP requests; all network findings are bounded probe observations.
 
 Passing log: `build/integration-final-20261109.log`. Earlier failed assertions/diagnostics remain under `build/integration-*-20261109.log`, including the original zero-TCP assertion and invisible-helper-window finding. These checks use authored host probes and synthetic source, never document script execution. They do not test actual downloads, OS keyboard/clipboard/IME, VoiceOver, latency, or full sandbox/security acceptance.
+
+## Narrow native-request preflight follow-up
+
+`BundledResearchWebView` now overrides only `load(URLRequest)`. It applies the unchanged fixed bundled-page policy **before** calling WebKit and synchronously returns nil for a disallowed request. The real controller uses that subclass and records host-only rejection diagnostics. It adds no guest/native bridge or general navigation capability. Initial bundled `loadFileURL` behavior is unchanged.
+
+Nine scoped offscreen groups pass in `build/native-request-preflight-20261109.log`. The covered request returned nil, incremented its rejection counter synchronously, preserved source and produced zero additional trap TCP/data observations. In the same run a separate raw WKWebView with the same cancellation policy opened one TCP connection, with no application/request bytes observed and no source replacement. That comparator count is logged, not required to remain exactly one. Script navigation made no extra connection in the observed run, also not a process-isolation invariant. The positive WebKit fetch and other existing checks remain in place.
+
+This hardens the demonstrated native `load(URLRequest)` route; **it does not fix or establish OS/process network isolation**. Other native loaders remain outside demonstrated coverage: `load(URL)` (SDK availability macOS/iOS 27, not executable on this macOS 26 host), `loadFileURL`, `loadFileRequest`, HTML/data/simulated-request loaders, native download start/resume, reload/back-forward and interaction-state restoration. Installed `WKWebView.h` explicitly notes simulated-request content may load subresources. These are trusted-host APIs, not reachable through current inert document source, and are not a guest sandbox boundary.
+
+Swift warnings-as-errors app verification passes in the existing separate Verification product. The visible Debug app is not restarted or rebuilt. Current native-request evidence remains separate from actual downloads, OS input/clipboard/IME, VoiceOver, latency and complete security/release acceptance.
 
 ## Verified checkpoint
 
@@ -56,7 +66,8 @@ No interactive OS typing/undo, native accessibility/VoiceOver, OS IME or latency
 ## Deliberate boundary
 
 - Nonpersistent `WKWebsiteDataStore`; no accounts, disk document persistence or sync.
-- Only the exact bundled `index.html` top-level navigation, plus fragment changes, is allowed. New windows, subframe navigations, downloads and JavaScript dialogs are refused.
+- The navigation allowlist permits only the exact bundled `index.html` plus fragment changes. Delegates refuse new windows, subframe/download-marked navigations and JavaScript dialogs.
+- The native request preflight covers only `load(URLRequest)`; delegate checks reject download-marked navigations, but separate native loader/download/history APIs are not demonstrated isolated.
 - `loadFileURL` grants WebKit read access only to the generated Editor resource directory. No user-document grants or native message handlers are registered.
 - CSP denies default/network connections, images, fonts, media, frames, workers, objects, forms and base URLs. Only the local bundled script and necessary inline editor styles are allowed. Document HTML/script-looking text remains inert source in the existing editor.
 - Native status and toolbar label the experiment and temporary edits. This build uses no signing credentials, entitlements, production services or embedded credentials.

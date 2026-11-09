@@ -15,7 +15,7 @@ private final class LoopbackTrap: @unchecked Sendable {
     private let listener: NWListener
     private var readyPort: UInt16?
     private var failure: String?
-    private var requests = 0
+    private var dataReceives = 0
     private var connections = 0
 
     init() throws {
@@ -38,7 +38,7 @@ private final class LoopbackTrap: @unchecked Sendable {
             connection.start(queue: .global(qos: .utility))
             connection.receive(minimumIncompleteLength: 1, maximumLength: 8_192) { [weak self] data, _, _, _ in
                 if let self, data?.isEmpty == false {
-                    self.lock.lock(); self.requests += 1; self.lock.unlock()
+                    self.lock.lock(); self.dataReceives += 1; self.lock.unlock()
                 }
                 let response = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, OPTIONS\r\nAccess-Control-Allow-Headers: *\r\nAccess-Control-Allow-Private-Network: true\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"
                 connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in connection.cancel() })
@@ -49,8 +49,37 @@ private final class LoopbackTrap: @unchecked Sendable {
 
     var port: UInt16? { lock.lock(); defer { lock.unlock() }; return readyPort }
     var error: String? { lock.lock(); defer { lock.unlock() }; return failure }
-    var counts: [Int] { lock.lock(); defer { lock.unlock() }; return [connections, requests] }
+    var counts: [Int] { lock.lock(); defer { lock.unlock() }; return [connections, dataReceives] }
     func stop() { listener.cancel() }
+}
+
+// Diagnostic comparator only: the old raw WKWebView entrypoint plus the same
+// pure navigation allowlist. Never used by the actual research app.
+@MainActor private final class RawNavigationControl: NSObject, WKNavigationDelegate {
+    let view: WKWebView
+    private let page: URL
+    private let policy: BundledNavigationPolicy
+    private(set) var loaded = false
+    private(set) var blocked = 0
+
+    init(page: URL) {
+        self.page = page
+        self.policy = BundledNavigationPolicy(pageURL: page)
+        self.view = WKWebView(frame: NSRect(x: 0, y: 0, width: 1024, height: 760),
+                              configuration: BundledEditorController.makeConfiguration())
+        super.init()
+        view.navigationDelegate = self
+    }
+    func load() { view.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent()) }
+    func stop() { view.stopLoading(); view.navigationDelegate = nil }
+    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
+                 decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
+        let allowed = policy.permits(action.request.url, mainFrame: action.targetFrame?.isMainFrame == true,
+                                     download: action.shouldPerformDownload)
+        if !allowed { blocked += 1 }
+        decisionHandler(allowed ? .allow : .cancel)
+    }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { loaded = true }
 }
 
 @MainActor private func require(_ value: @autoclosure () -> Bool, _ message: String) throws {
@@ -153,21 +182,37 @@ private final class LoopbackTrap: @unchecked Sendable {
     try require(settledInert == "inert", "Deferred rendering activated document markup")
     print("PASS actual CSP connection denial, with zero additional trap connections")
 
-    let blockedBefore = controller.blockedNavigations
-    view.load(URLRequest(url: URL(string: target)!))
-    try await waitUntil("external navigation cancellation") { controller.blockedNavigations > blockedBefore }
+    let nativeRejectedBefore = controller.nativeRequestRejections
+    let navigation = view.load(URLRequest(url: URL(string: target)!))
+    try require(navigation == nil && controller.nativeRequestRejections == nativeRejectedBefore + 1,
+                "External native URLRequest reached WebKit instead of synchronous preflight rejection")
     let retained = try await javascript(view, "return window.spike.source();")
     try await Task.sleep(nanoseconds: 250_000_000)
-    try require(retained == inert && trap.counts[1] == baseline[1], "Native navigation replaced source or sent an HTTP request")
-    let nativeConnections = trap.counts[0] - baseline[0]
+    try require(retained == inert && trap.counts == baseline, "Guarded native URLRequest changed source or opened a connection")
     let guestBaseline = trap.counts, guestBlockedBefore = controller.blockedNavigations
     _ = try await javascript(view, "setTimeout(() => window.location.assign(url), 0); return 'scheduled';", ["url": target])
     try await waitUntil("script-initiated navigation cancellation") { controller.blockedNavigations > guestBlockedBefore }
     try await Task.sleep(nanoseconds: 250_000_000)
     let guestRetained = try await javascript(view, "return window.spike.source();")
     try require(guestRetained == inert && trap.counts[1] == baseline[1], "Script navigation replaced source or sent an HTTP request")
-    print("PASS native/script navigation cancellation: source retained, no HTTP request")
-    print("LIMITATION: navigation TCP connections native=\(nativeConnections), script=\(trap.counts[0] - guestBaseline[0]); navigation cancellation is NOT network isolation.")
+    print("PASS covered native URLRequest preflight: synchronous refusal, zero additional TCP/data observed; script navigation cancelled with source retained")
+    print("OBSERVATION: script navigation TCP delta=\(trap.counts[0] - guestBaseline[0]); zero script TCP is not a process-isolation invariant.")
+
+    let raw = RawNavigationControl(page: page)
+    defer { raw.stop() }
+    raw.load()
+    try await waitUntil("raw WebKit diagnostic control") { raw.loaded }
+    let rawSource = try await javascript(raw.view, "return window.spike.source();")
+    let rawBaseline = trap.counts
+    raw.view.load(URLRequest(url: URL(string: target)!))
+    try await waitUntil("raw native navigation cancellation") { raw.blocked > 0 }
+    try await Task.sleep(nanoseconds: 250_000_000)
+    let rawRetained = try await javascript(raw.view, "return window.spike.source();")
+    try require(rawRetained == rawSource && trap.counts[1] == rawBaseline[1],
+                "Raw navigation diagnostic committed or sent an HTTP request")
+    print("PASS raw navigation cancellation comparator: source retained, no HTTP/application bytes observed")
+    print("LIMITATION: raw native TCP delta=\(trap.counts[0] - rawBaseline[0]); the request-only guard is NOT OS/process network isolation or coverage of other loaders/download APIs.")
+    raw.stop()
     let postNavigation = trap.counts
 
     let popup = try await javascript(view, "return window.open(url) === null ? 'blocked' : 'opened';", ["url": target])
@@ -192,7 +237,7 @@ private final class LoopbackTrap: @unchecked Sendable {
     try require(!controller.loaded && view.navigationDelegate == nil && view.uiDelegate == nil,
                 "Stopped controller accepted a stale navigation callback")
     print("PASS native dialog suppression and one-shot teardown")
-    print("Passed 8 offscreen system-WKWebView integration checks. No OS keyboard/clipboard, VoiceOver, latency or full security acceptance claimed.")
+    print("Passed 9 scoped offscreen system-WKWebView integration checks. No OS keyboard/clipboard, VoiceOver, latency or full network/security acceptance claimed.")
 }
 
 @main private enum IntegrationChecks {
