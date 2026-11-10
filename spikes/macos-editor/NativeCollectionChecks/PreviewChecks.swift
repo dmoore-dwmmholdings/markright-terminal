@@ -33,7 +33,7 @@ private struct PreviewCheckFailure: Error, CustomStringConvertible {
 
 /// Public accessibility getters on this test-owned view tree only. No AX
 /// process access, VoiceOver settings, UI actions or cross-application lookup.
-@MainActor private func previewAXNodes(_ root: Any) -> [(node: AnyObject, id: String?, label: String?, title: String?, value: String?)] {
+@MainActor private func previewAXNodes(_ root: Any, diagnose: Bool = false) -> [(node: AnyObject, id: String?, label: String?, title: String?, value: String?)] {
     var pending: [Any] = [root]
     // Public AppKit utility flattens ignored local containers. It only queries
     // this fixture subtree; no application root or AX setting is changed.
@@ -41,9 +41,14 @@ private struct PreviewCheckFailure: Error, CustomStringConvertible {
     var seen = Set<ObjectIdentifier>()
     var result: [(AnyObject, String?, String?, String?, String?)] = []
     var visited = 0
-    while let item = pending.popLast(), visited < 1024 {
-        guard let object = item as? any NSObjectProtocol,
-              seen.insert(ObjectIdentifier(object as AnyObject)).inserted else { continue }
+    var skippedTypes = Set<String>()
+    var semanticEdges: [String: Int] = [:]
+    while visited < 1024, let item = pending.popLast() {
+        guard let object = item as? any NSObjectProtocol else {
+            skippedTypes.insert(String(reflecting: type(of: item)))
+            continue
+        }
+        guard seen.insert(ObjectIdentifier(object as AnyObject)).inserted else { continue }
         visited += 1
         func get(_ name: String) -> Any? {
             let selector = NSSelectorFromString(name)
@@ -56,7 +61,17 @@ private struct PreviewCheckFailure: Error, CustomStringConvertible {
         // LIFO: visit semantic SwiftUI AX children before the larger raw native
         // hierarchy. Duplicate raw/AX references do not consume the node budget.
         if let view = item as? NSView { pending.append(contentsOf: view.subviews) }
-        pending.append(contentsOf: get("accessibilityChildren") as? [Any] ?? [])
+        // Public descendant/content relations only; never follow a parent,
+        // application root, focused element or another process's AX tree.
+        for attribute in ["accessibilityContents", "accessibilityChildren", "accessibilityChildrenInNavigationOrder"] {
+            let children = get(attribute) as? [Any] ?? []
+            semanticEdges[attribute, default: 0] += children.count
+            pending.append(contentsOf: children)
+        }
+    }
+    if diagnose {
+        let edges = semanticEdges.keys.sorted().map { "\($0)=\(semanticEdges[$0] ?? 0)" }.joined(separator: ", ")
+        print("[PreviewChecks] local AX traversal: unique=\(visited), pending=\(pending.count), edges=[\(edges)], unsupportedTypes=\(skippedTypes.sorted())")
     }
     return result
 }
@@ -179,7 +194,7 @@ private struct PreviewCheckFailure: Error, CustomStringConvertible {
     window.contentView = host
     defer { window.contentView = nil; window.close() }
     try await previewSnapshot("swiftui-control", root: host)
-    let observed = previewAXNodes(host).contains {
+    let observed = previewAXNodes(host, diagnose: true).contains {
         $0.id == "preview-paint-control" || $0.label?.contains("Synthetic SwiftUI paint control") == true ||
             $0.title?.contains("Synthetic SwiftUI paint control") == true || $0.value?.contains("Synthetic SwiftUI paint control") == true
     }
@@ -305,7 +320,7 @@ private struct PreviewDiskSnapshot: Equatable {
             return previewPanelText(root)?.contains("Inactive bold label") == true && previewOpenDocument("First.md", root: root)
         }
     } catch {
-        let nodes = previewAXNodes(root)
+        let nodes = previewAXNodes(root, diagnose: true)
         let textMatched = previewPanelText(root)?.contains("Inactive bold label") == true
         FileHandle.standardError.write(Data("[PreviewChecks] enabled=\(workspace.showsSourcePreview), sourceFrame=\(source.frame), rootFrame=\(root.frame), nodes=\(nodes.count), panelFound=\(nodes.contains { $0.id == "live-preview-panel" }), previewTextMatched=\(textMatched), openMarker=\(previewOpenDocument("First.md", root: root))\n".utf8))
         for node in nodes.filter({ $0.id != nil || $0.label != nil || $0.title != nil || $0.value != nil }).prefix(90) {
