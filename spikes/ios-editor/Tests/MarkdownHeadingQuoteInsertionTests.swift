@@ -132,9 +132,11 @@ final class MarkdownHeadingQuoteInsertionTests: XCTestCase {
     func testPhysicalRowLimitIncludesSelectedBlanksAndExcludesPhantomTerminalRow() throws {
         let limit = MarkdownInsertionPlan.maximumPrefixRows
         for (command, marker, _) in cases {
-            for source in [String(repeating: "x\r\n", count: limit), "x\n" + String(repeating: "\n", count: limit - 1)] {
+            for (source, ending) in [(String(repeating: "x\r\n", count: limit), "\r\n"),
+                                     ("x\n" + String(repeating: "\n", count: limit - 1), "\n")] {
                 let plan = try XCTUnwrap(MarkdownInsertionPlan.make(command: command, source: source, selection: fullRange(source)))
-                XCTAssertTrue(plan.replacement.hasSuffix("\n"))
+                XCTAssertTrue(plan.replacement.utf8.suffix(ending.utf8.count).elementsEqual(ending.utf8),
+                              "Complete physical ending bytes changed")
                 if command == .blockquote { XCTAssertEqual(plan.replacement.utf8.count, source.utf8.count + limit * marker.utf8.count) }
                 XCTAssertNil(MarkdownInsertionPlan.make(command: command, source: source + "\n", selection: fullRange(source + "\n")))
                 XCTAssertNil(MarkdownInsertionPlan.make(command: command, source: source + "x", selection: fullRange(source + "x")))
