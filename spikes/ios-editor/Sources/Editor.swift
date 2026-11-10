@@ -27,6 +27,16 @@ import UIKit
         return UIMenu(title: "Insert Markdown", children: actions)
     }
 
+    func makeTaskMarkerAction() -> UIAction {
+        let available = allowsMarkdownInsertion && window != nil && isFirstResponder && isEditable &&
+            markedTextRange == nil && selectedRanges.count == 1
+        let plan = available ? TaskMarkerEdit.make(source: text, selection: selectedRange) : nil
+        return UIAction(title: TaskMarkerEdit.title, attributes: plan == nil ? [.disabled] : []) { [weak self, plan] _ in
+            guard let plan else { return }
+            self?.applyMarkdownInsertion(plan)
+        }
+    }
+
     func makeOutlineMenu() -> UIMenu {
         guard allowsHeadingNavigation, window != nil, isFirstResponder, isEditable,
               markedTextRange == nil, selectedRanges.count == 1 else {
@@ -86,12 +96,14 @@ import UIKit
         let undo = undoManager
         undo?.beginUndoGrouping()
         defer { undo?.endUndoGrouping() }
-        // The validated current selection is exactly the captured replacement
-        // range. Native insertion owns undo and text-system notifications.
+        // A task-marker caret plan replaces its whole row while capturing the
+        // original caret separately. Other commands retain their original range.
+        // Native insertion still owns text undo and text-system notifications.
+        if selectedRange != plan.range { selectedRange = plan.range }
         insertText(plan.replacement)
         guard SourceSelection.sameText(text, expected), SourceSelection.isValid(plan.selectionAfter, in: text) else { return false }
         selectedRange = plan.selectionAfter
-        undo?.setActionName("Insert Markdown")
+        undo?.setActionName(plan.actionName)
         // UIKit programmatic input paths need not deliver every delegate event.
         // Reuse the existing reporter for exact source and the final selection.
         (delegate as? NativeSourceEditor.Coordinator)?.report(self)
@@ -177,7 +189,7 @@ struct NativeSourceEditor: UIViewRepresentable {
             guard source.allowsMarkdownInsertion else { return UIMenu(children: suggestedActions) }
             guard source.selectedRanges.count == 1,
                   range == source.selectedRange else { return nil }
-            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu(), source.makeOutlineMenu(), source.makeSelectionFindMenu()])
+            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu(), source.makeTaskMarkerAction(), source.makeOutlineMenu(), source.makeSelectionFindMenu()])
         }
     }
 }

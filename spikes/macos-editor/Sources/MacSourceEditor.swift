@@ -41,6 +41,7 @@ import SwiftUI
             let item = NSMenuItem(title: "Insert Markdown", action: nil, keyEquivalent: "")
             item.submenu = makeMarkdownMenu()
             menu.addItem(item)
+            menu.addItem(makeTaskMarkerItem())
             let outline = NSMenuItem(title: "Document outline", action: nil, keyEquivalent: "")
             outline.submenu = makeOutlineMenu()
             menu.addItem(outline)
@@ -61,6 +62,13 @@ import SwiftUI
             menu.addItem(MacMarkdownInsertionMenuItem(title: command.title, sourceView: self, plan: plan))
         }
         return menu
+    }
+
+    func makeTaskMarkerItem() -> NSMenuItem {
+        let available = window != nil && window?.firstResponder === self && isEditable &&
+            !hasMarkedText() && selectedRanges.count == 1
+        let plan = available ? TaskMarkerEdit.make(source: string, selection: selectedRange()) : nil
+        return MacMarkdownInsertionMenuItem(title: TaskMarkerEdit.title, sourceView: self, plan: plan)
     }
 
     func makeOutlineMenu() -> NSMenu {
@@ -124,7 +132,7 @@ import SwiftUI
         insertText(plan.replacement, replacementRange: plan.range)
         guard SourceSelection.sameText(string, expected), SourceSelection.isValid(plan.selectionAfter, in: string) else { return false }
         setSelectedRange(plan.selectionAfter)
-        undo?.setActionName("Insert Markdown")
+        undo?.setActionName(plan.actionName)
         // Report through the same native coordinator as ordinary typing. AppKit
         // normally emits both edit and final selection notifications as well.
         onTextStateChanged?()
@@ -177,7 +185,7 @@ import SwiftUI
 
 /// NSMenuItem's target is weak. The retained item targets itself and holds only
 /// a weak view reference, so an old menu cannot retain or redirect an editor.
-@MainActor private final class MacMarkdownInsertionMenuItem: NSMenuItem {
+@MainActor private final class MacMarkdownInsertionMenuItem: NSMenuItem, NSMenuItemValidation {
     private weak var sourceView: MacSourceTextView?
     private let plan: MarkdownInsertionPlan?
 
@@ -195,6 +203,12 @@ import SwiftUI
         target = self
         action = #selector(insertMarkdown(_:))
         isEnabled = false
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        guard let plan, let sourceView, let window = sourceView.window else { return false }
+        return window.firstResponder === sourceView && sourceView.isEditable && !sourceView.hasMarkedText() &&
+            sourceView.selectedRanges.count == 1 && plan.matches(source: sourceView.string, selection: sourceView.selectedRange())
     }
 
     @objc private func insertMarkdown(_ sender: Any?) {

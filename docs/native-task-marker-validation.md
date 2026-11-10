@@ -1,0 +1,25 @@
+# MRK-50 native task-marker source candidate
+
+This independent local candidate starts from MRK-49 `bc015dc` on `spike/native-task-marker-state`, reusing its worktree and owned build resources. It excludes held MRK-46 preview work. It is a literal source-editing experiment, separate from the blocked production authoring/parser work. **New verification is pending.** MRK-49's 177 shared tests, 19 AppKit groups and successful unsigned builds are inherited historical evidence, not MRK-50 results.
+
+The native whole-document context menu adds **Toggle task markers**. Put the caret anywhere on one physical row, or select whole physical rows. An accepted task prefix has zero to three ASCII spaces, `-`, `+` or `*`, one ASCII space, `[ ]`, `[x]` or `[X]`, then an ASCII space/tab or end of row. Selected blank ASCII-space/tab rows stay unchanged. Any other selected row refuses the entire edit. At least one accepted marker is required. If any is unchecked, unchecked markers become lowercase `x` and existing `x`/`X` bytes stay unchanged; if all are checked, they become spaces.
+
+This command edits explicitly selected literal source. It does not determine whether Markdown surrounding that row makes it a rendered task: a matching source row inside a fence can still be explicitly edited. It does not add a rendered checkbox, parse surrounding context, execute code, access a reference/URL/file/provider, read clipboard contents, or use network capability. Unsupported syntax leaves the action disabled.
+
+Source is limited to 1 MiB UTF-8, the actual replacement to 64 KiB UTF-8 and a batch to 256 physical rows. The caret's replacement range expands to its row body, excluding the ending. A selected batch uses exactly the selected whole-row range, including endings/BOM when selected. Leading BOM, body Unicode and every other byte remain unchanged. Strict UTF-16/surrogate/CRLF boundary validation applies. Carets at the start of a new physical row belong to that new row; an EOF caret after a final ending has no task row.
+
+The captured original selection is checked separately from the replacement range. All existing insertion plans default that capture to their original range. Exact-byte source and selection checks refuse retained actions after either changes. Task mutations keep the original caret/selection offsets, use the existing native text/report path and name a separate undo action. AppKit uses its explicit replacement-range input API; UIKit temporarily selects the expanded range before native insertion, then restores the captured selection. Attached UIKit selection/undo behavior requires runtime evidence and is not accepted by compilation.
+
+## Review and verification status
+
+Independent read-only review found no blocking issue in the source transform, plan compatibility, native wiring or authored checks. Root review added public AppKit menu validation: a direct contextual action must not become enabled just because its retained target responds to the selector. Validation checks the same captured plan, source, focus, editability, single selection and composition state, while execution independently repeats its guards. Fresh/refused root-menu update controls are authored. Existing insertion submenus keep their prior auto-enable policy.
+
+**MRK-50 tests and builds have not run.** The prior exclusive slot was explicitly released. Repeated read-only capacity checks found approximately 116 GiB free and load below 6, but another lane's `xcodebuild` process (PID 8641, `SuiteNative.xcodeproj`, scheme `SuiteNativeUI`, action `test`) remained active. No Markright compiler, native probe or simulator job was started; no other process or artifact was altered. The next verification stage must recheck that resource coordination before starting.
+
+## Planned verification
+
+Shared tests cover exact BOM/NFD/emoji/mixed-ending bytes, caret ownership, batch states, invalid syntax/selection and resource boundaries, plus stale source/selection refusal. The AppKit runner adds actual local menu targets, caret/batch output, native source/model selection and focus, separate typing/edit undo-redo, guard refusals, normal autosave and settled full-source conflict recovery. The UIKit detached/scope case is authored for compilation only. All existing regressions and bounded unsigned Mac/iOS test-bundle builds will run serially after capacity checks.
+
+## Preserved gates
+
+No push, alternate publication, main merge, deployment, credential creation or held documentation write is part of this candidate. MRK-46 accessibility observation, attended VoiceOver, actual OS menus/keyboard/IME, UIKit runtime, physical devices, full parser/renderer/authoring, untrusted ingestion, network isolation and release acceptance remain open. Existing TextKit/host provisioning/simulator/recovery-input issues are not resolved by this feature.

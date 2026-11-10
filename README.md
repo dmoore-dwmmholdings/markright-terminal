@@ -10,6 +10,8 @@ An **unmerged native source-outline candidate** adds a bounded heading-navigatio
 
 An **unmerged native heading/quote source candidate** extends that checkpoint with literal Heading 1/2/3 and Blockquote insertion through existing native menus and undo. It passes **166 shared tests and all 18 AppKit groups**, including exact source/endings, placeholders and separate native typing/insertion undo. Unsigned Mac and iOS test-bundle builds succeed. Actual OS input, attached iOS runtime, VoiceOver and full authoring acceptance remain open. [Candidate behavior, evidence and limits](docs/native-heading-quote-validation.md).
 
+A **local task-marker candidate** adds explicit source completion/clearing on the caret row or selected whole rows, preserving byte layout and native editing authority. Verification is pending; no runtime or release acceptance is claimed. [Behavior and planned checks](docs/native-task-marker-validation.md).
+
 An **unmerged selected-source find candidate** adds native Next/Previous exact-occurrence navigation from the current selection, with wrapping and retained source, focus and undo. It passes **177 shared tests and all 19 AppKit groups**; unsigned Mac and iOS test-bundle builds succeed. Attached UIKit interaction, actual OS input, VoiceOver and release acceptance remain open. [Behavior, evidence and limits](docs/native-selection-find-validation.md).
 
 ## Reproduce
