@@ -6,6 +6,10 @@ struct CollectionLibrary: View {
     @State private var collection: String?
     @State private var documents: [String] = []
     @State private var session: DocumentSession?
+    @State private var recoverySelection: RecoveryDraft?
+    @State private var recoveryDrafts: [RecoveryDraft] = []
+    @State private var recoveryIssues: [String] = []
+    @State private var interruptedWrites: [String] = []
     @State private var errorMessage: String?
     @State private var name = ""
     @State private var newCollection = false
@@ -29,7 +33,7 @@ struct CollectionLibrary: View {
             ScrollView {
                 // Keep short lists mounted across Dynamic Type relayout. Larger
                 // lists remain lazy; these bounds never truncate stored entries.
-                if collections.count + documents.count <= 128 {
+                if collections.count + documents.count + recoveryDrafts.count <= 128 {
                     VStack(alignment: .leading, spacing: 16) { libraryRows }.padding()
                 } else {
                     LazyVStack(alignment: .leading, spacing: 16) { libraryRows }.padding()
@@ -74,11 +78,35 @@ struct CollectionLibrary: View {
         .sheet(item: $session, onDismiss: { perform { try await refresh() } }) { session in
             DocumentWorkspace(session: session) { self.session = nil }
         }
+        .sheet(item: $recoverySelection, onDismiss: { perform { try await refresh() } }) { draft in
+            RecoveryWorkspace(draft: draft, collections: collections, restore: { target, name in
+                let receipt = try await store.restoreRecovery(draft, collection: target, name: name)
+                // Publishing succeeded. A later listing failure must never
+                // discard this receipt or invite duplicate restoration.
+                collection = target
+                documents = []
+                interruptedWrites = []
+                return receipt
+            }) { recoverySelection = nil }.id(draft.fileName + draft.id.uuidString)
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active, let session { Task { _ = await session.flush() } }
         }
     }
     @ViewBuilder private var libraryRows: some View {
+        if !recoveryDrafts.isEmpty {
+            Section {
+                ForEach(recoveryDrafts, id: \.fileName) { draft in
+                    Button("\(draft.name) in \(draft.collection)") { recoverySelection = draft }
+                        .buttonStyle(.plain).foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .accessibilityIdentifier("recovery-\(draft.name)")
+                }
+            } header: { Text("Recovered edits").font(.headline) }
+        }
+        ForEach(Array(recoveryIssues.enumerated()), id: \.offset) { _, issue in
+            Text(issue).fixedSize(horizontal: false, vertical: true)
+        }
         Section {
             if collections.isEmpty { Text("Create a collection to start writing.") }
             ForEach(collections, id: \.self) { item in
@@ -103,6 +131,10 @@ struct CollectionLibrary: View {
                 }
             } header: { Text("Documents in \(collection)").font(.headline).foregroundStyle(.primary) }
         }
+        if !interruptedWrites.isEmpty {
+            Text("Interrupted storage files are preserved in this collection. They have not been applied or removed.")
+                .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("interrupted-writes-notice")
+        }
         Section {
             Text("Stored on this device. No sync.").font(.body).fixedSize(horizontal: false, vertical: true)
             Text("Collection and editing prototype.").font(.body).fixedSize(horizontal: false, vertical: true)
@@ -119,21 +151,34 @@ struct CollectionLibrary: View {
         }
     }
     private func refresh() async throws {
+        // Recovery is read first, so valid checkpoints remain visible even when
+        // another collection entry prevents ordinary browsing.
+        let inventory = try await store.recoveries()
+        recoveryDrafts = inventory.drafts
+        recoveryIssues = inventory.issues
         collections = try await store.collections()
-        if let collection, collections.contains(collection) { documents = try await store.documents(in: collection) }
-        else { collection = nil; documents = [] }
+        if let collection, collections.contains(collection) {
+            documents = try await store.documents(in: collection)
+            interruptedWrites = try await store.interruptedWrites(in: collection)
+        } else { collection = nil; documents = []; interruptedWrites = [] }
     }
     private func select(_ name: String) async throws {
         let listed = try await store.documents(in: name)
+        let interrupted = try await store.interruptedWrites(in: name)
         collection = name
         documents = listed
+        interruptedWrites = interrupted
     }
     private func open(collection: String, name: String) async throws {
         session = makeSession(try await store.open(collection: collection, name: name))
     }
     private func makeSession(_ document: StoredDocument) -> DocumentSession {
         let failSaves = Self.testRootID != nil && ProcessInfo.processInfo.arguments.contains("--fail-library-save")
-        return DocumentSession(document: document) { document, source in
+        let recoveryID = UUID()
+        let recovery = DocumentRecovery(checkpoint: { document, source in
+            try await store.checkpoint(document, source: source, sessionID: recoveryID)
+        }, complete: { draft in try await store.completeCheckpoint(draft) })
+        return DocumentSession(document: document, recovery: recovery) { document, source in
             if failSaves { throw CocoaError(.fileWriteNoPermission) }
             return try await store.save(document, source: source)
         }
@@ -152,6 +197,14 @@ private struct DocumentWorkspace: View {
                     Task { if await session.flush() { close() }; closing = false }
                 }.foregroundStyle(.primary).frame(minHeight: 44).accessibilityIdentifier("close-document").disabled(closing || session.model.composing)
                 Text(session.status).accessibilityIdentifier("document-save-status")
+                if let recoveryStatus = session.recoveryStatus {
+                    Text(recoveryStatus).accessibilityIdentifier("document-recovery-status")
+                }
+                if session.canKeepRecovery && !session.canClose {
+                    Button("Close with recovery copy") {
+                        if session.prepareRecoveryClose() { close() }
+                    }.foregroundStyle(.primary).frame(minHeight: 44).accessibilityIdentifier("close-with-recovery")
+                }
                 if session.errorMessage != nil || session.document.durabilityWarning != nil {
                     Button("Retry save") { Task { _ = await session.flush() } }.foregroundStyle(.primary).frame(minHeight: 44).accessibilityIdentifier("retry-save")
                 }

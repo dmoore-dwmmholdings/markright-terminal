@@ -1,10 +1,18 @@
 # Native collection and editing validation
 
-Native SwiftUI collection browsing and native UITextView source/preview/reading editing. The app-owned collection validation is tracked by MRK-36; editor interaction research remains MRK-9. Automated runs use synthetic documents on the dedicated simulator, with no sync, script execution, signing account or physical devices.
+Native SwiftUI collection browsing and native UITextView source/preview/reading editing. The app-owned collection validation is tracked by MRK-36, bounded recovery by MRK-37; editor interaction research remains MRK-9. Automated runs use synthetic documents on the dedicated simulator, with no sync, script execution, signing account or physical devices.
 
 The default launch now creates and reopens app-owned collection folders and UTF-8 documents with autosave. See [the storage contract and limitations](../../docs/native-collections-validation.md). External folders, recovery, full identity and production MRK-18 acceptance remain gated. Use `--editor-fixture` for the historical sample editor, including with `--static-calculator` or `--large-document`.
 
-## App-owned collection checkpoint
+## App-owned recovery checkpoint
+
+MRK-37 adds a confirmed exact-source checkpoint before each document save, explicit close with a current recovery copy, a relaunch recovery inbox and inert native preview. Restoration always creates a separate non-clobbering file; original `.md`/`.mrk` suffixes are preserved. Only a matching checkpoint is retired after a confirmed save. Receipt-aware cleanup retries and newer-edit/composition guards prevent stale recovery claims.
+
+Full `build/MRK37-native-recovery-verified-20261110.xcresult`: **71 native/model/decoder +19 UI tests pass** (90 total), zero failures/skips/runtime warnings, Swift warnings-as-errors. Includes twelve storage and nine session groups, acknowledged-checkpoint termination/new-copy recovery with unchanged original, four unfiltered light/dark inbox/preview audits, and every prior regression. Initial clipped-caption audit failures, corrected targeted24/0 and final90/0 evidence are retained. Independent lifecycle/storage review cleared; actual filesystem-failure injection is not qualified.
+
+[Recovery contract and evidence](../../docs/native-recovery-validation.md) covers checksummed bounded envelopes, exact-token retirement, pending/malformed preservation, 32-stage/544-entry collection bounds and interrupted publication links. Simulator restored Shutdown; about150.5 GiB free. This does not establish power-loss/disk-full, crash-before-checkpoint, external providers/writers, VoiceOver/physical-device/security/release or full MRK-18/12 acceptance. Public source publication is separately authorized and reviewed.
+
+## Historical app-owned collection checkpoint
 
 MRK-36 adds a native collection/document browser, ordinary UTF-8 file creation/opening and debounced autosave. One app-wide actor refuses unsafe paths/collisions and divergent baseline writes; one session pump retains in-flight receipts and newer edits. Close waits for a confirmed save, with composition/error/durability gates and retained source on failure. File contents remain authoritative; no imported code runs.
 
