@@ -99,9 +99,21 @@ import UIKit
         // A task-marker caret plan replaces its whole row while capturing the
         // original caret separately. Other commands retain their original range.
         // Native insertion still owns text undo and text-system notifications.
-        if selectedRange != plan.range { selectedRange = plan.range }
+        let expandedSelection = selectedRange != plan.range
+        if expandedSelection { selectedRange = plan.range }
         insertText(plan.replacement)
-        guard SourceSelection.sameText(text, expected), SourceSelection.isValid(plan.selectionAfter, in: text) else { return false }
+        guard SourceSelection.sameText(text, expected), SourceSelection.isValid(plan.selectionAfter, in: text) else {
+            // Native input can decline an edit. Restore only our own temporary
+            // selection when nothing else changed; never roll back text or a
+            // delegate's distinct selection/composition state.
+            if expandedSelection, SourceSelection.sameText(text, plan.source), markedTextRange == nil,
+               selectedRanges.count == 1, selectedRange == plan.range,
+               SourceSelection.isValid(plan.originalSelection, in: text) {
+                selectedRange = plan.originalSelection
+                (delegate as? NativeSourceEditor.Coordinator)?.report(self)
+            }
+            return false
+        }
         selectedRange = plan.selectionAfter
         undo?.setActionName(plan.actionName)
         // UIKit programmatic input paths need not deliver every delegate event.
