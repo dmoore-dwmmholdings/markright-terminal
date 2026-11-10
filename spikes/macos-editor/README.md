@@ -17,6 +17,12 @@ MRK-39 passes **58 shared storage/session tests +5 focused AppKit groups**, with
 
 The bundled fixture now includes read-only Reading mode. All 12 scoped offscreen groups pass in `build/reading-mode-native-20261110.log`, including immediate preview refresh, delivered-paste refusal and exact source/reverse selection retention. Separate browser checks pass 33/skip 1; all 87 Node groups pass. `build/reading-mode-host-20261110.log` records the unsigned warnings-as-errors build into the unused separate Verification product. The visible Debug app/tabs were preserved. The first attempt's below 20 GiB resource stop is retained; after cleanup about 47 GiB allowed sequential verification. These are scoped UI-policy checks, not OS keyboard/clipboard/VoiceOver or network-isolation acceptance. See desktop README/ADR0002 for limits.
 
+## Link, image-reference and code-block insertion
+
+MRK-43 adds **Link**, **Image reference** and **Code block** to the same native source context menu. Templates keep selected label/alt text and select a destination placeholder; code fences preserve literal selected contents and physical endings. No reference resolution, image import, file picker or new native dialog is added.
+
+All 123 shared Mac tests and 14 focused AppKit/Transferable groups pass, including actual menu actions, selected destination typing and separate insertion/typing undo-redo. The unsigned Verification app builds with warnings as errors. A TextKit nil-content-manager diagnostic is retained during authored Link undo/redo despite passing source/selection assertions; its cause and actual OS input/menu behavior remain open. See [the contract and evidence](../../docs/native-markdown-structure-validation.md).
+
 ## Native Markdown insertion
 
 MRK-42 adds **Insert Markdown → Bold / Italic / Inline code** to the native source context menu. Literal selected source or a selected placeholder is inserted through native text/undo. Retained menu actions refuse stale source/ranges, inactive, detached, read-only, composing or multiple-selection views. Existing source identity, generation and save/recovery authority are preserved.

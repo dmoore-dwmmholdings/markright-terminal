@@ -41,7 +41,8 @@ let package = Package(
                 "DeclarativeDecoderTests.swift",
                 "EditorModelTests.swift",
                 "NativeSelectionTests.swift",
-                "NativeMarkdownInsertionTests.swift"
+                "NativeMarkdownInsertionTests.swift",
+                "NativeMarkdownStructureInsertionTests.swift"
             ],
             sources: [
                 "NativeTestDirectory.swift",
@@ -54,7 +55,8 @@ let package = Package(
                 "SaveAsSessionTests.swift",
                 "SaveAsStoreTests.swift",
                 "SourceCopyExportTests.swift",
-                "MarkdownInsertionTests.swift"
+                "MarkdownInsertionTests.swift",
+                "MarkdownStructureInsertionTests.swift"
             ]
         )
     ],

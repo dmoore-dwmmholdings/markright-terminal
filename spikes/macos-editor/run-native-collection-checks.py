@@ -64,6 +64,7 @@ def main():
         DIRECTORY / "NativeCollectionChecks" / "SearchChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "ExportChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "MarkdownChecks.swift",
+        DIRECTORY / "NativeCollectionChecks" / "StructureChecks.swift",
     ]
     require_headroom()
     subprocess.run([
