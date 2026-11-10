@@ -147,6 +147,8 @@ private struct TaskMarkerFailure: Error, CustomStringConvertible {
     try await taskWait("task workspace") { host.layoutSubtreeIfNeeded(); return !workspace.isBusy && taskSource(host)?.isEditable == true }
     guard let text = taskSource(host) else { throw TaskMarkerFailure("Workspace task source absent") }
     try taskRequire(window.makeFirstResponder(text), "Cannot focus workspace task source")
+    guard let undo = text.undoManager else { throw TaskMarkerFailure("Task workspace undo manager missing") }
+    text.breakUndoCoalescing(); undo.removeAllActions(); undo.groupsByEvent = false
     let baseline = session.document.baseline
     let generation = session.model.editingGeneration, caret = NSRange(location: 9, length: 0)
     let file = root.appendingPathComponent("Editing/Task.md")
@@ -171,11 +173,34 @@ private struct TaskMarkerFailure: Error, CustomStringConvertible {
         taskSource(host) === text && workspace.session === session && session.model.editingGeneration == generation &&
         session.model.documentSelection == caret && text.selectedRange() == caret && window.firstResponder === text,
         "Task edit overwrote external original or lost settled current full-source recovery/caret/editor")
+    // Even undo back to the last saved bytes remains a new source revision:
+    // an externally divergent file cannot be acknowledged or overwritten.
+    var previousCheckpoint = checkpoint
+    for (operation, expected) in [("undo", checked), ("redo", source)] {
+        try taskRequire(operation == "undo" ? undo.canUndo : undo.canRedo, "Task conflict lost native " + operation)
+        if operation == "undo" { undo.undo() } else { undo.redo() }
+        try await taskWait("task conflict " + operation + " recovery") {
+            SourceSelection.sameText(session.model.source, expected) && session.canKeepRecovery && !session.isSaving
+        }
+        let currentID = session.recoveryDraft?.id
+        try taskRequire(currentID != nil && currentID != previousCheckpoint, "Task conflict " + operation + " retained a stale checkpoint")
+        try await Task.sleep(for: .milliseconds(650))
+        let currentDisk = try Data(contentsOf: file)
+        let currentRecovery = try await workspace.store.recoveries()
+        try taskRequire(currentDisk == external && currentRecovery.drafts.contains {
+            $0.id == currentID && SourceSelection.sameText($0.source, expected)
+        } && session.recoveryDraft?.id == currentID && session.canKeepRecovery && session.dirty && !session.canClose &&
+            !session.isSaving && session.document.baseline == Data(checked.utf8) &&
+            taskSource(host) === text && workspace.session === session && session.model.editingGeneration == generation &&
+            SourceSelection.sameText(text.string, expected) && window.firstResponder === text,
+            "Task conflict " + operation + " lost current full-source recovery or overwrote/acknowledged external original")
+        previousCheckpoint = currentID
+    }
 }
 
 @MainActor func runTaskMarkerChecks() async throws {
     try await taskMarkerNativeEditing()
     try await taskMarkerWorkspaceRecovery()
-    print("PASS native task markers: actual caret/batch menu targets, exact BOM/NFD/emoji/mixed endings, x/X states, retained caret/model/focus, named separate insertion/typing undo-redo, stale/read-only/non-source/multiple/marked/detached guards; normal autosave and settled conflicted full-source recovery without overwriting original")
+    print("PASS native task markers: actual caret/batch menu targets, exact BOM/NFD/emoji/mixed endings, x/X states, retained caret/model/focus, named separate insertion/typing undo-redo, stale/read-only/non-source/multiple/marked/detached guards; normal autosave and settled conflicted edit/undo/redo full-source recovery without overwriting original")
     print("Passed 1 native task-marker AppKit group. Authored actions only; OS input/IME, UIKit runtime, VoiceOver, parser/context/security and release acceptance remain open.")
 }

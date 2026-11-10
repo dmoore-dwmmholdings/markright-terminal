@@ -16,9 +16,11 @@ Independent read-only review found no blocking issue in the source transform, pl
 
 **MRK-50 tests and builds have not run.** The prior exclusive slot was explicitly released. Repeated read-only capacity checks found approximately 116 GiB free and load below 6, but another lane's `xcodebuild` process (PID 8641, `SuiteNative.xcodeproj`, scheme `SuiteNativeUI`, action `test`) remained active. No Markright compiler, native probe or simulator job was started; no other process or artifact was altered. The next verification stage must recheck that resource coordination before starting.
 
+A later bounded read-only wait also ended with that test still active at 13 minutes elapsed. No verification was launched automatically. Lightweight review strengthened the recovery checks to follow task edit/undo/redo, require a fresh checkpoint ID after each operation, inspect exact current recovered bytes after 650 ms settlement and preserve the externally divergent file even when undo returns to previously saved bytes. Independent review found no blocking issue; its suggestion to compare against each immediately preceding checkpoint was incorporated. These additional checks are also unrun.
+
 ## Planned verification
 
-Shared tests cover exact BOM/NFD/emoji/mixed-ending bytes, caret ownership, batch states, invalid syntax/selection and resource boundaries, plus stale source/selection refusal. The AppKit runner adds actual local menu targets, caret/batch output, native source/model selection and focus, separate typing/edit undo-redo, guard refusals, normal autosave and settled full-source conflict recovery. The UIKit detached/scope case is authored for compilation only. All existing regressions and bounded unsigned Mac/iOS test-bundle builds will run serially after capacity checks.
+Shared tests cover exact BOM/NFD/emoji/mixed-ending bytes, caret ownership, batch states, invalid syntax/selection and resource boundaries, plus stale source/selection refusal. The AppKit runner adds actual local menu targets, caret/batch output, native source/model selection and focus, separate typing/edit undo-redo, guard refusals, normal autosave and settled full-source conflict recovery across edit/undo/redo, including undo to previously saved bytes while the on-disk file diverges. The UIKit detached/scope case is authored for compilation only. All existing regressions and bounded unsigned Mac/iOS test-bundle builds will run serially after capacity checks.
 
 ## Preserved gates
 
