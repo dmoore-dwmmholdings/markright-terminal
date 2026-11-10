@@ -181,6 +181,26 @@ private final class LoopbackTrap: @unchecked Sendable {
     try require(sourceMode == "preserved", "Source mode changed source/selection or failed to reveal syntax")
     print("PASS explicit source-mode toggle with exact mixed-ending source and reverse selection retained")
 
+    let readingMode = try await javascript(view, """
+        window.spike.select(source.indexOf('bold') + 3, source.indexOf('bold'));
+        const selection = JSON.stringify(window.spike.selection());
+        const button = document.querySelector('#reading-mode'); button.click();
+        const content = document.querySelector('.cm-content');
+        const reading = button.getAttribute('aria-pressed') === 'true' &&
+            content.getAttribute('contenteditable') === 'false' && content.getAttribute('aria-readonly') === 'true' &&
+            document.querySelectorAll('.preview-StrongEmphasis').length === 1;
+        const data = new DataTransfer(); data.setData('text/plain', 'REPLACED');
+        const paste = new ClipboardEvent('paste', {clipboardData:data, bubbles:true, cancelable:true});
+        content.dispatchEvent(paste);
+        const retained = window.spike.source() === source && JSON.stringify(window.spike.selection()) === selection;
+        button.click();
+        return reading && retained && paste.defaultPrevented && content.getAttribute('contenteditable') === 'true' &&
+            document.querySelectorAll('.preview-StrongEmphasis').length === 0 &&
+            window.spike.source() === source && JSON.stringify(window.spike.selection()) === selection ? 'preserved' : 'changed';
+        """, ["source": modeFixture])
+    try require(readingMode == "preserved", "Reading mode changed source/selection, accepted paste or failed to refresh preview")
+    print("PASS bundled reading-mode preview refresh, delivered paste refusal and exact source/selection retention")
+
     let inert = "<img src='\(target)' onerror='window.injected=1'>\n\n<script>window.injected=1</script>"
     let literal = try await javascript(view, """
         window.spike.setSource(source);
@@ -291,7 +311,7 @@ private final class LoopbackTrap: @unchecked Sendable {
                 "Teardown lost refusal delegates or showed native UI")
     print("PASS retained-view teardown after controller release: delayed script navigation refused, dialogs suppressed, covered native loads rejected, no stale status or additional application bytes")
     print("OBSERVATION: teardown TCP delta=\(trap.counts[0] - teardownBaseline[0]); JavaScript remains alive and process/network isolation is not established.")
-    print("Passed 11 scoped offscreen system-WKWebView integration checks. No OS keyboard/clipboard, VoiceOver, latency or full network/security acceptance claimed.")
+    print("Passed 12 scoped offscreen system-WKWebView integration checks. No OS keyboard/clipboard, VoiceOver, latency or full network/security acceptance claimed.")
 }
 
 @main private enum IntegrationChecks {

@@ -75,12 +75,68 @@ test('source toggle refuses composition before the first text update',async({pag
   // Selection transactions must not re-enable the toggle during this phase.
   spike.select(1);
   document.querySelector('#source-mode').dispatchEvent(new MouseEvent('click'));
+  document.querySelector('#reading-mode').dispatchEvent(new MouseEvent('click'));
  });
  const toggle=page.getByRole('button',{name:'Source mode'});
  await expect(toggle).toHaveAttribute('aria-pressed','false');
  await expect(toggle).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Reading mode'})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Reading mode'})).toHaveAttribute('aria-pressed','false');
  await page.evaluate(()=>document.querySelector('.cm-content').dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})));
  await expect(toggle).toBeEnabled();
+ await expect(page.getByRole('button',{name:'Reading mode'})).toBeEnabled();
+});
+test('reading mode immediately previews the active line and restores live source',async({page})=>{
+ const source='\uFEFF# Heading\r\n\rA **bold** line\n';
+ await page.evaluate(source=>{spike.setSource(source);spike.select(source.indexOf('bold')+3,source.indexOf('bold'));},source);
+ const selection=await page.evaluate(()=>spike.selection());
+ await expect(page.locator('.cm-content')).toContainText('**bold**');
+ const reading=page.getByRole('button',{name:'Reading mode'});
+ await reading.click();
+ await expect(reading).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.preview-StrongEmphasis')).toHaveCount(1);
+ await expect(page.locator('.cm-content')).not.toContainText('**bold**');
+ await expect(page.locator('.cm-content')).toHaveAttribute('contenteditable','false');
+ await expect(page.locator('.cm-content')).toHaveAttribute('aria-readonly','true');
+ expect(await page.evaluate(()=>spike.source())).toBe(source);
+ expect(await page.evaluate(()=>spike.selection())).toEqual(selection);
+ await reading.click();
+ await expect(reading).toHaveAttribute('aria-pressed','false');
+ await expect(page.locator('.cm-content')).toContainText('**bold**');
+ await expect(page.locator('.preview-StrongEmphasis')).toHaveCount(0);
+ expect(await page.evaluate(()=>spike.selection())).toEqual(selection);
+});
+test('reading mode refuses edits and preserves undo redo across keyboard transitions',async({page})=>{
+ const source='\uFEFFfirst\r\nA **bold** line\rafter\n';
+ await page.evaluate(source=>{spike.setSource(source);spike.select(source.indexOf('bold'));spike.focus();},source);
+ await page.keyboard.type('X');
+ const edited=source.replace('bold','Xbold');
+ await page.getByRole('button',{name:'Source mode'}).click();
+ const reading=page.getByRole('button',{name:'Reading mode'});
+ await reading.focus();await page.keyboard.press('Space');
+ await expect(reading).toBeFocused();
+ await page.evaluate(()=>spike.focus());
+ await expect(page.locator('.cm-content')).toBeFocused();
+ await page.keyboard.type('NO');await page.keyboard.press('Backspace');
+ await page.keyboard.press(process.platform==='darwin'?'Meta+z':'Control+z');
+ const prevented=await page.evaluate(()=>{
+  const data=new DataTransfer();data.setData('text/plain','REPLACED\r\n');
+  const event=new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true});
+  document.querySelector('.cm-content').dispatchEvent(event);return event.defaultPrevented;
+ });
+ expect(prevented).toBe(true);expect(await page.evaluate(()=>spike.source())).toBe(edited);
+ await reading.focus();await page.keyboard.press('Enter');
+ await expect(page.getByRole('button',{name:'Source mode'})).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.cm-content')).toBeFocused();
+ await page.keyboard.press(process.platform==='darwin'?'Meta+z':'Control+z');
+ expect(await page.evaluate(()=>spike.source())).toBe(source);
+ await reading.click();await page.evaluate(()=>spike.focus());
+ await expect(page.locator('.cm-content')).toBeFocused();
+ await page.keyboard.press(process.platform==='darwin'?'Meta+Shift+z':'Control+Shift+z');
+ expect(await page.evaluate(()=>spike.source())).toBe(source);
+ await reading.click();
+ await page.keyboard.press(process.platform==='darwin'?'Meta+Shift+z':'Control+Shift+z');
+ expect(await page.evaluate(()=>spike.source())).toBe(edited);
 });
 test('keyboard source toggle preserves edit history and returns focus to the editor',async({page})=>{
  const source='\uFEFFfirst\r\nA **bold** line\rafter\n';

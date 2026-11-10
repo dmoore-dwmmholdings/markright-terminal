@@ -2,6 +2,16 @@
 
 Local CodeMirror 6/Lezer Markdown candidate. This is not a Tauri application, full Markdown renderer or selected production framework. No document scripts execute; source is shown as text, never injected as HTML. It does not implement Markright file resolution/includes or use the native parser yet.
 
+## Reading-mode candidate — browser/native verification pending
+
+Branch `spike/reading-mode` adds a Reading mode control that disables editing and applies the existing partial preview to every line. Source mode remains editable. Leaving reading mode restores the prior editing mode, source metadata, selection and history. Parsing continues; this is not a complete renderer, performance fallback or accepted accessibility implementation.
+
+The extracted `editor-mode.mjs` sets CodeMirror readOnly and editable facets and rejects ordinary document-changing transactions. The custom paste handler refuses before reading clipboard data. These are UI controls, not a security boundary: trusted host APIs can replace state or explicitly bypass transaction filters. No such native/guest capability is added to document source. Both controls retain compositionStarted guards. Review identified that live/reading reuse the same projection plugin, so the transition now explicitly refreshes decorations; browser regression is prepared, not yet executed.
+
+Three pure mode-state groups and all **87 Node test groups pass** (`spikes/macos-editor/build/reading-mode-state-20261110.log`, `reading-mode-node-suite-20261110.log`). They exercise exact BOM/mixed-ending source, reverse selection, rejected edits, history refusal without consuming undo/redo and invalid modes. Independent static review found no blocker. The browser guard stopped before bundling or launch at19.65GiB; `reading-mode-before-20261110.log` records that resource stop, not an assertion result. Browser/native regression additions are **unrun**, including immediate preview refresh, focused keyboard attacks, paste refusal, remembered source mode and the twelfth offscreen native group. Existing29 browser passes/1skip and11 native groups remain historical evidence from the previous bundle.
+
+Resume this branch only after checking at least20GiB free. Run the desktop suite with a separate output directory, then the bounded native runner and separate unused Verification app build. Preserve failed/passing logs and the visible Debug app; do not reload existing preview tabs and lose temporary edits. The verified main checkout and old bundle are preserved while this candidate awaits verification. VoiceOver, real OSIME/clipboard, all-shell behavior, isolation, ingestion, physical/device/distribution/release gates remain open.
+
 ## Whole-document source mode
 
 The explicit **Source mode** toggle reveals all syntax by reconfiguring only the preview decoration compartment. It keeps the same editor state, source-separator metadata, directional selection and history; keyboard activation returns focus to the editor. It is a whole-document editing view, not a read-only reading mode or a parser/performance fallback. Markdown parsing still runs, and the renderer remains partial.

@@ -2,6 +2,8 @@
 
 Standalone SwiftUI window around the existing synthetic desktop CodeMirror fixture. This is a macOS shell experiment, not a selected production architecture, Tauri integration, complete Markdown application or native iOS implementation. MRK-9 VoiceOver observation and MRK-12 integrated review remain open.
 
+Branch `spike/reading-mode` contains an **unverified UI candidate** for bundled reading mode and a prepared twelfth integration group. Only three pure mode-state groups/full87 Node groups have passed. The browser resource guard stopped before bundling/launch below20GiB; no native runner or app build was started for this candidate. Prior11 native passes and Verification product belong to the previous bundle, not reading-mode acceptance. Restore at least20GiB headroom before the bounded runner and separate unused Verification build; preserve visible Debug app and all evidence. See the desktop README/ADR0002 for pending checks and limits.
+
 ## Build without launching
 
 From the repository root, using the working Node 24 installation described in the root README:

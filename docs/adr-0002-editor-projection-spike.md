@@ -2,6 +2,12 @@
 
 Status: MRK-9 in progress, not UI acceptance.
 
+## Desktop reading-mode candidate — November 10, 2026
+
+Branch `spike/reading-mode` adds an explicit read-only partial-preview experiment. Compartment reconfiguration retains the same exact-source metadata, directional selection and history, remembering the prior live/source editing mode. EditorState.readOnly, EditorView.editable and ordinary transaction rejection work together; custom paste refuses early. Trusted host state replacement or filter bypass remains possible, so this is UI policy, not isolation or permission for document code. Both mode controls retain compositionStarted guards. Static review caught same-plugin preview refresh needing an explicit effect; that effect and immediate-transition browser regression are present.
+
+Three mode-state groups and the full87 Node groups pass, independently reviewed. Browser/native verification is pending: the20GiB guard stopped the initial browser attempt before bundling/launch at19.65GiB (`spikes/macos-editor/build/reading-mode-before-20261110.log`). Prepared UI tests cover immediate preview refresh, source/reverse selection, focused edit/paste/undo/redo refusal, mode restoration and composition. The new twelfth native offscreen group is unrun. No browser or native result is inferred from pure state tests; prior29 browser passes/1skip and11 native groups are historical. The candidate is kept separate from verified main and visible preview pending headroom. VoiceOver/OSIME, complete renderer, latency, isolation, ingestion/security/physical/device/distribution/release and MRK-9/12 gates stay open.
+
 ## BOM-prefixed reference projection correction — November 10, 2026
 
 The reference AST's coordinates previously ignored the first source BOM. This truncated closed fences and returned an empty range for an unclosed fence's EOF caret; even an emoji's mapped end could split a surrogate pair. `analyze` now maps the parser's BOM-relative positions into exact original-source UTF-16 coordinates before projection/ownership/extraction. The root retains origin zero; first-line columns and all end offsets include the BOM. Only one BOM is semantically ignored, matching the pinned dependency.
