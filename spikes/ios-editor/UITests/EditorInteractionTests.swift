@@ -1,5 +1,68 @@
 import XCTest
 @MainActor final class EditorInteractionTests: XCTestCase {
+    private func audit(_ app: XCUIApplication) throws {
+        try app.performAccessibilityAudit(for: .all) { issue in
+            let element = issue.element
+            let detail = "\(issue.compactDescription)\n\(issue.detailedDescription)\nidentifier: \(element?.identifier ?? "none")\nlabel: \(element?.label ?? "none")\nframe: \(String(describing: element?.frame))"
+            let attachment = XCTAttachment(string: detail)
+            attachment.name = "Audit element diagnostic"; attachment.lifetime = .keepAlways; self.add(attachment)
+            return false // Report every issue; no category or element is ignored.
+        }
+    }
+    func testReadingModeShowsStaticTextAndPreservesEditsOnExit() {
+        let app = XCUIApplication(); app.launch()
+        let preview = app.buttons["preview-1"]
+        XCTAssertTrue(preview.waitForExistence(timeout: 10)); preview.tap()
+        let editor = app.textViews["source-editor-1"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5)); editor.tap(); editor.typeText(" literal -- \"read\" ")
+        let edited = editor.value as? String
+        let reading = app.buttons["toggle-reading-mode"]
+        reading.tap()
+        let text = app.staticTexts["reading-1"]
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Native reading mode"; screenshot.lifetime = .keepAlways; add(screenshot)
+        // Markdown presentation trims leading whitespace; raw source is checked
+        // exactly after leaving reading mode below.
+        XCTAssertTrue(text.label.contains("literal -- \"read\""), "Reading label: \(text.label); edited source: \(edited ?? "missing")")
+        XCTAssertFalse(app.buttons["preview-1"].exists)
+        XCTAssertFalse(app.buttons["show-document-source"].exists)
+        XCTAssertFalse(app.buttons["finish-editing"].exists)
+        XCTAssertEqual(reading.value as? String, "On")
+        text.tap()
+        XCTAssertEqual(app.textViews.count, 0)
+        reading.tap()
+        XCTAssertEqual(reading.value as? String, "Off")
+        XCTAssertTrue(preview.waitForExistence(timeout: 5)); preview.tap()
+        XCTAssertEqual(app.textViews["source-editor-1"].value as? String, edited)
+    }
+    func testReadingModeCommitsWholeSourceBeforeShowingStaticText() {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["show-document-source"].waitForExistence(timeout: 10))
+        app.buttons["show-document-source"].tap()
+        let editor = app.textViews["document-source-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5)); editor.tap(); editor.typeText(" literal source ")
+        let edited = editor.value as? String
+        let reading = app.buttons["toggle-reading-mode"]; reading.tap()
+        XCTAssertTrue(app.staticTexts["reading-0"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textViews.count, 0)
+        reading.tap(); app.buttons["show-document-source"].tap()
+        XCTAssertTrue(editor.waitForExistence(timeout: 5)); XCTAssertEqual(editor.value as? String, edited)
+    }
+    func testReadingAccessibilityAudit() throws {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["toggle-reading-mode"].waitForExistence(timeout: 10))
+        app.buttons["toggle-reading-mode"].tap()
+        XCTAssertTrue(app.staticTexts["reading-1"].waitForExistence(timeout: 5))
+        try audit(app)
+    }
+    func testDarkReadingAccessibilityAudit() throws {
+        let app = XCUIApplication(); app.launchArguments = ["--dark-mode"]; app.launch()
+        XCTAssertTrue(app.buttons["toggle-reading-mode"].waitForExistence(timeout: 10))
+        app.buttons["toggle-reading-mode"].tap()
+        XCTAssertTrue(app.staticTexts["reading-1"].waitForExistence(timeout: 5))
+        try audit(app)
+    }
     func testActiveLineAndAtomicFenceTransition() {
         let app = XCUIApplication(); app.launch()
         let line = app.buttons["preview-1"]
@@ -30,6 +93,11 @@ import XCTest
         let source = editor.value as? String
         XCTAssertTrue(source?.contains("typed") == true)
         app.buttons["finish-editing"].tap(); app.buttons["preview-0"].tap()
+        XCTAssertEqual(app.textViews["source-editor-0"].value as? String, source)
+        app.buttons["toggle-reading-mode"].tap()
+        XCTAssertTrue(app.staticTexts["reading-0"].waitForExistence(timeout: 20))
+        XCTAssertEqual(app.textViews.count, 0)
+        app.buttons["toggle-reading-mode"].tap(); app.buttons["preview-0"].tap()
         XCTAssertEqual(app.textViews["source-editor-0"].value as? String, source)
     }
     func testWholeDocumentSourceCanEditAndReturnWithoutLosingMarkdown() {
@@ -70,13 +138,13 @@ import XCTest
     func testPreviewAccessibilityAudit() throws {
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.buttons["preview-1"].waitForExistence(timeout: 10))
-        try app.performAccessibilityAudit(for: .all)
+        try audit(app)
     }
 
     func testDarkPreviewAccessibilityAudit() throws {
         let app = XCUIApplication(); app.launchArguments = ["--dark-mode"]; app.launch()
         XCTAssertTrue(app.buttons["preview-1"].waitForExistence(timeout: 10))
-        try app.performAccessibilityAudit(for: .all)
+        try audit(app)
     }
 
 }

@@ -2,6 +2,20 @@
 
 SwiftUI previews plus a native UITextView for the selected source line/fixture block. It runs only on a dedicated simulator; no real documents, sync, disk persistence, scripts, signing account or physical devices are involved.
 
+## Native reading mode
+
+Reading mode replaces the tappable edit rows with static native text and hides editing actions. Exit reading returns to the preview/editing screen. Entry commits whole-document source and rebuilds fixture groups; both entry and exit invalidate prior editor generations. Composition blocks mode changes, and stale callbacks cannot overwrite source or composition state during or after reading. The model also refuses direct editing helpers while reading. These are UI/model controls, not an untrusted-code security boundary.
+
+Both edit previews and reading text remove attributed link targets, preserving readable text/emphasis without adding URL-opening behavior. Code/table rows remain source-like; the renderer and grouping are still partial. Cross-mode undo/selection restoration is not implemented or claimed. The action bar preserves button identity while switching to a vertical layout at larger Dynamic Type sizes, and has an opaque system background. Static reading rows use natural text height. Up to 128 rows and 65,536 UTF-16 units stay mounted during reading; larger documents retain lazy rendering. These bounds change mounting only, never document content. No audit category or reported issue is suppressed.
+
+Native and UI regressions cover BOM/mixed-ending source, composition, repeated mode entry, stale callbacks, direct block/source-editor transitions, static reading rows and full light/dark preview/reading audits. Simulator evidence remains distinct from VoiceOver, real keyboard IME, iPad/physical devices, complete rendering, persistence, security and release acceptance.
+
+Final result `build/MRK9-native-reading-final-20261110.xcresult`: **24 native/model/decoder tests + 10 UI tests pass**, zero failures/skips, with Swift warnings as errors. All four `.all` light/dark preview/reading audits pass. The 1 MB smoke now includes edit → read → edit with exact first-block source retained; this is not a latency budget or large-document screen-reader proof. Only the existing owned iPhone Duo/iOS 27.2 simulator was used and restored to Shutdown; current iPad/physical-device suites were not run.
+
+The action bar's orientation currently follows Dynamic Type size. Narrow split views, smaller phone widths and localization remain unverified alongside the broader device gates.
+
+Initial runs exposed contrast, clipping and Dynamic Type findings, plus a test that incorrectly expected Markdown presentation to retain leading whitespace. Raw source was already preserved exactly. The unchanged `c094525` baseline passed its same-device dark audit. Corrections retained natural reading-text sizing, stable action identity across layout changes and bounded mounting of short reading documents during Dynamic Type relayout. The diagnostic audit handler always returns false for every issue; none is ignored. Original failed bundles, baseline, diagnostics and screenshots remain under `build/MRK9-*reading*20261110*`; successful summary/screenshot exports are `MRK9-native-reading-final-summary-20261110.json` and `native-reading-final-attachments-20261110`.
+
 ## Reproduce
 
 Generate with `xcodegen generate --spec spikes/ios-editor/project.yml`. Build/test the generated project and scheme `MarkrightEditorSpike`, with a dedicated simulator UUID and `-derivedDataPath spikes/ios-editor/build -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO`. Never target `booted` or a physical device implicitly. Coordinate simulator ownership before running. Do not open Simulator.app for headless runs.

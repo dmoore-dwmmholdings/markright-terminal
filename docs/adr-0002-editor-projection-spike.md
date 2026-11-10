@@ -2,6 +2,16 @@
 
 Status: MRK-9 in progress, not UI acceptance.
 
+## Native Swift reading mode — November 10, 2026
+
+The iOS prototype now has explicit reading mode with static native text and no edit-row actions. Entry commits/regroups whole-source edits and invalidates old callbacks; exit invalidates again and returns to preview/editing. Composition blocks transitions. Generation checks reject stale source/composition callbacks before mutation, including repeated reading entry. Exact BOM/mixed-ending source remains authoritative. Links are removed from attributed previews so reading text adds no URL-opening capability. This remains partial fixture rendering; native cross-mode undo/selection restoration is not implemented.
+
+Actual audit findings drove natural text sizing, stable action identity in the adaptive footer and bounded retention of short reading documents during Dynamic Type relayout. At most 128 blocks and 65,536 UTF-16 units remain mounted; larger documents retain lazy rendering, with no truncation or source rewrite. A four-case native budget test checks both limits. These are resource/interaction experiment choices, not frozen production budgets or proof of large-document screen-reader behavior.
+
+Final owned iPhone Duo/iOS 27.2 run passes **24 native/model/decoder tests and 10 UI tests**, zero failures/skips, with Swift warnings as errors: `spikes/ios-editor/build/MRK9-native-reading-final-20261110.xcresult`. All four full light/dark preview/reading accessibility audits pass, plus direct block/whole-source transitions, stale callbacks, exact source re-entry and an extended 1 MB edit → read → edit smoke. Independent review found no semantic blocker. No actual VoiceOver, real keyboard IME, current iPad/physical-device or latency acceptance follows.
+
+Original failed audits/test assertions and diagnostics are preserved. Same-device unchanged `c094525` dark-preview baseline passed; the new findings were treated as regressions. A leading-whitespace presentation assertion was corrected while retaining exact raw-source checks. Audit diagnostic handlers return false for every issue, preserving all categories/failures. The sole owned simulator was restored to Shutdown. No runtime download, signing credential, Firebase, deployment, physical device or other worker artifact was used; the desktop preview/Debug window was preserved. Source security/ingestion, isolation, VoiceOver, device/distribution/release and MRK-9/12 gates remain open. The separate GitHub destination investigation is in `github-destination.md`; no remote was guessed or repository created.
+
 ## Desktop reading-mode follow-up — November 10, 2026
 
 The reading-mode experiment adds read-only all-line partial preview. Compartment reconfiguration retains exact-source metadata, directional selection and history, remembering the prior live/source editing mode. EditorState.readOnly, EditorView.editable and ordinary transaction rejection work together; custom paste refuses early. Trusted host state replacement/filter bypass remains possible, so this is UI policy, not isolation or permission for document code. Both controls retain compositionStarted guards. Explicit refresh handles reuse of the same preview plugin across live/reading transitions.

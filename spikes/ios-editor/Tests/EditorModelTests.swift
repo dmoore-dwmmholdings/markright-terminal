@@ -2,6 +2,93 @@ import XCTest
 import UIKit
 @testable import MarkrightEditorSpike
 @MainActor final class EditorModelTests: XCTestCase {
+    func testRetainedReadingRowsHaveFixedRowAndUTF16BudgetsWithoutTruncation() {
+        for (source, retained) in [
+            (String(repeating: "x\n", count: 127), true),
+            (String(repeating: "x\n", count: 128), false),
+            (String(repeating: "😀", count: 32_768), true),
+            (String(repeating: "😀", count: 32_769), false)
+        ] {
+            let model = EditorModel(source: source)
+            XCTAssertFalse(model.retainsReadingRows)
+            model.setReadingMode(true)
+            XCTAssertEqual(model.retainsReadingRows, retained)
+            XCTAssertEqual(Array(model.source.utf8), Array(source.utf8))
+        }
+    }
+    func testReadingModeKeepsExactSourceAndRefusesEditingAndLateCallbacks() {
+        let source = "\u{FEFF}first\r\n**middle**\rlast\n"
+        let model = EditorModel(source: source)
+        model.activate(1)
+        let oldGeneration = model.editingGeneration
+        model.setReadingMode(true)
+        XCTAssertTrue(model.readingMode)
+        XCTAssertNil(model.active)
+        model.activate(1); model.showSource(); model.update(1, "replaced")
+        model.updateBlockFromEditor(1, "old に", composing: true, generation: oldGeneration)
+        model.updateDocumentSource("old document", composing: true, generation: oldGeneration)
+        model.finish()
+        XCTAssertTrue(model.readingMode)
+        XCTAssertFalse(model.sourceMode)
+        XCTAssertNil(model.active)
+        XCTAssertFalse(model.composing)
+        XCTAssertEqual(Array(model.source.utf8), Array(source.utf8))
+        model.setReadingMode(false)
+        model.activate(1)
+        let currentGeneration = model.editingGeneration
+        model.updateBlockFromEditor(1, "current に", composing: true, generation: currentGeneration)
+        model.updateBlockFromEditor(1, "stale clears composition", composing: false, generation: oldGeneration)
+        XCTAssertTrue(model.composing)
+        XCTAssertEqual(model.source, "\u{FEFF}first\r\ncurrent に\rlast\n")
+        model.updateBlockFromEditor(1, "current committed", composing: false, generation: currentGeneration)
+        model.setReadingMode(true); model.setReadingMode(false); model.activate(1)
+        model.updateBlockFromEditor(1, "re-entered に", composing: true, generation: model.editingGeneration)
+        model.updateBlockFromEditor(1, "stale from previous edit", composing: false, generation: currentGeneration)
+        XCTAssertTrue(model.composing)
+        XCTAssertEqual(model.source, "\u{FEFF}first\r\nre-entered に\rlast\n")
+    }
+    func testReadingFromWholeSourceCommitsRegroupingAndRejectsPreviousSession() {
+        let model = EditorModel(source: "before\r\nafter")
+        model.showSource()
+        let oldGeneration = model.editingGeneration
+        let changed = "\u{FEFF}before\r\n```swift\rvalue\n```\rafter\n"
+        model.updateDocumentSource(changed, composing: false, generation: oldGeneration)
+        model.setReadingMode(true)
+        XCTAssertTrue(model.readingMode)
+        XCTAssertFalse(model.sourceMode)
+        XCTAssertEqual(model.blocks.filter(\.atomic).count, 1)
+        model.updateDocumentSource("late teardown", composing: true, generation: oldGeneration)
+        XCTAssertFalse(model.composing)
+        XCTAssertEqual(Array(model.source.utf8), Array(changed.utf8))
+        model.setReadingMode(false); model.showSource()
+        model.updateDocumentSource("current に", composing: true, generation: model.editingGeneration)
+        model.updateDocumentSource("stale clears composition", composing: false, generation: oldGeneration)
+        XCTAssertEqual(model.source, "current に")
+        XCTAssertTrue(model.composing)
+    }
+    func testReadingModeTransitionsWaitForCompositionToFinish() {
+        let model = EditorModel(source: "original")
+        model.activate(0); model.composing = true
+        model.setReadingMode(true)
+        XCTAssertFalse(model.readingMode)
+        XCTAssertEqual(model.active, 0)
+        model.composing = false; model.setReadingMode(true)
+        let generation = model.editingGeneration
+        model.setReadingMode(true)
+        XCTAssertEqual(model.editingGeneration, generation)
+        model.composing = true; model.setReadingMode(false)
+        XCTAssertTrue(model.readingMode)
+        model.composing = false; model.setReadingMode(false)
+        XCTAssertFalse(model.readingMode)
+        XCTAssertGreaterThan(model.editingGeneration, generation)
+        XCTAssertEqual(model.source, "original")
+    }
+    func testNativePreviewRemovesLinksWithoutLosingReadableTextOrEmphasis() {
+        let preview = EditorModel.previewText("**bold** [label](https://example.com) [file](file:///tmp/example)")
+        XCTAssertEqual(String(preview.characters), "bold label file")
+        XCTAssertTrue(preview.runs.allSatisfy { $0.link == nil })
+        XCTAssertTrue(preview.runs.contains { $0.inlinePresentationIntent?.contains(.stronglyEmphasized) == true })
+    }
     func testSourceRoundTripAndAtomicBlocks() {
         let source = "# title\n\n```swift\nx=1\n```\n|a|b|\n|-|-|\n|x|y|\n😀\n"
         let m = EditorModel(source: source)

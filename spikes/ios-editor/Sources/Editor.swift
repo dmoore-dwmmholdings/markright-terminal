@@ -14,6 +14,7 @@ struct SourceBlock: Identifiable, Equatable {
     var active: Int?
     var composing = false
     var sourceMode = false
+    private(set) var readingMode = false
     var documentSource = ""
     private(set) var editingGeneration = 0
     static let sample = "# Markright Terminal\nNative **preview** example\n\n```swift\nlet value = 42\n```\n\n| Field | Value |\n| --- | --- |\n| status | ready |\n\nUnicode 😀 and café"
@@ -76,30 +77,52 @@ struct SourceBlock: Identifiable, Equatable {
         return lines
     }
     var source: String { sourceMode ? documentSource : blocks.map { $0.source + $0.separatorAfter }.joined() }
+    // Keep short reading documents mounted across Dynamic Type relayout, so
+    // accessibility elements do not disappear as earlier rows grow. Bound both
+    // row count and text size; large documents retain lazy rendering.
+    var retainsReadingRows: Bool {
+        guard readingMode && blocks.count <= 128 else { return false }
+        var remaining = 65_536
+        for block in blocks {
+            for text in [block.source, block.separatorAfter] {
+                let count = text.utf16.count
+                guard count <= remaining else { return false }
+                remaining -= count
+            }
+        }
+        return true
+    }
+    static func previewText(_ source: String) -> AttributedString {
+        var text = (try? AttributedString(markdown: source)) ?? AttributedString(source.isEmpty ? " " : source)
+        // Reading text must not add a URL-opening capability. Navigation policy
+        // and the complete renderer remain separate acceptance gates.
+        text.link = nil
+        return text
+    }
     func activate(_ id: Int) {
-        guard !composing && !sourceMode else { return }
+        guard !composing && !sourceMode && !readingMode else { return }
         if active != id { editingGeneration += 1 }
         active = id
     }
     func showSource() {
-        guard !composing && !sourceMode else { return }
+        guard !composing && !sourceMode && !readingMode else { return }
         documentSource = source
         editingGeneration += 1
         active = nil
         sourceMode = true
     }
     func updateDocumentSource(_ value: String, composing: Bool, generation: Int) {
-        guard sourceMode && generation == editingGeneration else { return }
+        guard !readingMode && sourceMode && generation == editingGeneration else { return }
         self.composing = composing
         documentSource = value
     }
     func updateBlockFromEditor(_ id: Int, _ value: String, composing: Bool, generation: Int) {
-        guard !sourceMode && active == id && generation == editingGeneration else { return }
+        guard !readingMode && !sourceMode && active == id && generation == editingGeneration else { return }
         self.composing = composing
         update(id, value)
     }
     func finish() {
-        guard !composing else { return }
+        guard !composing && !readingMode else { return }
         editingGeneration += 1
         if sourceMode {
             blocks = EditorModel(source: documentSource).blocks
@@ -108,11 +131,25 @@ struct SourceBlock: Identifiable, Equatable {
         }
         active = nil
     }
+    func setReadingMode(_ enabled: Bool) {
+        guard !composing && readingMode != enabled else { return }
+        if enabled {
+            // Commit whole-source edits and invalidate the departing editor's
+            // callbacks before its UIViewRepresentable teardown can run.
+            finish()
+            readingMode = true
+        } else {
+            editingGeneration += 1
+            readingMode = false
+            active = nil
+        }
+    }
     func update(_ id: Int, _ source: String) {
-        guard let index = blocks.firstIndex(where: {$0.id == id}) else { return }
+        guard !readingMode, let index = blocks.firstIndex(where: {$0.id == id}) else { return }
         blocks[index].source = source
     }
 }
+
 
 struct NativeSourceEditor: UIViewRepresentable {
     let value: String
@@ -169,54 +206,86 @@ struct NativeSourceEditor: UIViewRepresentable {
 }
 struct EditorScreen: View {
     @State private var model = EditorModel(source: EditorModel.launchSource)
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private var actionLayout: AnyLayout {
+        dynamicTypeSize > .large ? AnyLayout(VStackLayout(alignment: .leading)) : AnyLayout(HStackLayout())
+    }
+    private func readingText(_ block: SourceBlock) -> Text {
+        if block.atomic { return Text(block.source) }
+        let preview = EditorModel.previewText(block.source.isEmpty ? " " : block.source)
+        if preview.runs.contains(where: { !($0.inlinePresentationIntent?.isEmpty ?? true) }) { return Text(preview) }
+        return Text(String(preview.characters))
+    }
+    @ViewBuilder private var actionButtons: some View {
+        if !model.readingMode {
+            if !model.sourceMode {
+                Button("Source") { model.showSource() }
+                    .accessibilityIdentifier("show-document-source")
+                    .accessibilityHint("Edit the complete Markdown document")
+                    .disabled(model.composing)
+            }
+            Button("Done editing") { model.finish() }
+                .accessibilityIdentifier("finish-editing").disabled(model.composing)
+        }
+        Button(model.readingMode ? "Exit reading" : "Read") { model.setReadingMode(!model.readingMode) }
+            .accessibilityLabel(model.readingMode ? "Exit reading" : "Reading mode")
+            .accessibilityIdentifier("toggle-reading-mode")
+            .accessibilityValue(model.readingMode ? "On" : "Off")
+            .disabled(model.composing)
+    }
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    Text("Interaction prototype. Not a complete Markdown editor.").font(.caption).foregroundStyle(.primary)
-                    if model.sourceMode {
-                        let generation = model.editingGeneration
-                        NativeSourceEditor(value: model.documentSource, id: -1, wholeDocument: true) { value, composing in
-                            model.updateDocumentSource(value, composing: composing, generation: generation)
-                        }.frame(height: 500)
-                    } else {
-                    ForEach(model.blocks) { block in
-                        if model.active == block.id {
-                            let generation = model.editingGeneration
-                            NativeSourceEditor(value: block.source, id: block.id) { value, composing in
-                                model.updateBlockFromEditor(block.id, value, composing: composing, generation: generation)
-                            }.frame(minHeight: block.atomic ? 150 : 64)
-                        } else {
-                            Button { model.activate(block.id) } label: {
-                                Group {
-                                    if block.atomic { Text(block.source).font(.system(.body, design: .monospaced)) }
-                                    else { Text((try? AttributedString(markdown: block.source)) ?? AttributedString(block.source.isEmpty ? " " : block.source)) }
-                                }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("preview-\(block.id)")
-                            .accessibilityLabel(block.source.isEmpty ? "Empty line" : block.source)
-                            .accessibilityHint("Double tap to edit source")
-                        }
-                    }
-                    }
-                }.padding()
+                if model.retainsReadingRows {
+                    VStack(alignment: .leading, spacing: 12) { documentRows }.padding()
+                } else {
+                    LazyVStack(alignment: .leading, spacing: 12) { documentRows }.padding()
+                }
             }
             .navigationTitle("Markright spike")
             .safeAreaInset(edge: .bottom) {
-                HStack {
-                    if !model.sourceMode {
-                        Button("Source") { model.showSource() }
-                            .accessibilityIdentifier("show-document-source")
-                            .accessibilityHint("Edit the complete Markdown document")
-                            .disabled(model.composing)
+                actionLayout { actionButtons }
+                .font(.body).buttonStyle(.borderedProminent).controlSize(.large)
+                .fixedSize(horizontal: false, vertical: true)
+                .tint(Color(red: 0.35, green: 0.25, blue: 0.05))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(Color(uiColor: .systemBackground))
+            }
+        }
+    }
+    @ViewBuilder private var documentRows: some View {
+        Text("Interaction prototype. Not a complete Markdown editor.").font(.caption).foregroundStyle(.primary)
+        if model.sourceMode {
+            let generation = model.editingGeneration
+            NativeSourceEditor(value: model.documentSource, id: -1, wholeDocument: true) { value, composing in
+                model.updateDocumentSource(value, composing: composing, generation: generation)
+            }.frame(height: 500)
+        } else {
+            ForEach(model.blocks) { block in
+                if model.readingMode {
+                    readingText(block)
+                        .font(block.atomic ? .system(.body, design: .monospaced) : .body)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("reading-\(block.id)")
+                } else if model.active == block.id {
+                    let generation = model.editingGeneration
+                    NativeSourceEditor(value: block.source, id: block.id) { value, composing in
+                        model.updateBlockFromEditor(block.id, value, composing: composing, generation: generation)
+                    }.frame(minHeight: block.atomic ? 150 : 64)
+                } else {
+                    Button { model.activate(block.id) } label: {
+                        Group {
+                            if block.atomic { Text(block.source).font(.system(.body, design: .monospaced)) }
+                            else { Text(EditorModel.previewText(block.source)) }
+                        }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
                     }
-                    Button("Done editing") { model.finish() }
-                        .accessibilityIdentifier("finish-editing").disabled(model.composing)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("preview-\(block.id)")
+                    .accessibilityLabel(block.source.isEmpty ? "Empty line" : block.source)
+                    .accessibilityHint("Double tap to edit source")
                 }
-                    .font(.body).buttonStyle(.borderedProminent).controlSize(.large)
-                    .tint(Color(red: 0.35, green: 0.25, blue: 0.05))
-                    .padding()
             }
         }
     }
