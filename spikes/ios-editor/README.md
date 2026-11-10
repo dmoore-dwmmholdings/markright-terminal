@@ -1,10 +1,18 @@
 # Native collection and editing validation
 
-Native SwiftUI collection browsing and native UITextView source/preview/reading editing. The app-owned collection validation is tracked by MRK-36, bounded recovery by MRK-37; editor interaction research remains MRK-9. Automated runs use synthetic documents on the dedicated simulator, with no sync, script execution, signing account or physical devices.
+Native SwiftUI collection browsing and native UITextView source/preview/reading editing. The app-owned collection validation is tracked by MRK-36, bounded recovery by MRK-37 and Save As by MRK-38; editor interaction research remains MRK-9. Automated runs use synthetic documents on the dedicated simulator, with no sync, script execution, signing account or physical devices.
 
 The default launch now creates and reopens app-owned collection folders and UTF-8 documents with autosave. See [the storage contract and limitations](../../docs/native-collections-validation.md). External folders, recovery, full identity and production MRK-18 acceptance remain gated. Use `--editor-fixture` for the historical sample editor, including with `--static-calculator` or `--large-document`.
 
-## App-owned recovery checkpoint
+## Native Save As checkpoint
+
+MRK-38 adds Save as a new document into another existing app-owned collection. It preserves source/file type/caret, refuses collisions and rebinds future saves only after a committed copy receipt. Newer edits save to that new baseline. Failed/cancelled naming resumes the original autosave on dismissal; prior in-flight receipts remain valid. The copy operation does not overwrite the original. Linked files/includes are not copied or rewritten.
+
+Full `build/MRK38-native-save-as-verified-20261110.xcresult`: **91 native/model/decoder +23 UI tests pass** (114 total), zero failures/skips/runtime warnings, Swift warnings-as-errors. Adds sixteen session groups, four store/focus groups and four UI methods for actual divergent originals, exact UTF-8, collisions, concurrent writes, direct caret resumption, new-destination relaunch and unfiltered light/dark naming audits. Initial name-field clipping was fixed with a vertically expanding field; a cancelled-failure autosave gap was fixed and regression-tested. Corrected targeted 24/0 and final 114/0 evidence are preserved. Independent lifecycle and publication review cleared the scoped work.
+
+[Save As contract and evidence](../../docs/native-save-as-validation.md) records exact ordering and limits. Owned simulator Shutdown, about 154.4 GiB free; preview and prior evidence preserved. External folders, relative reference/asset relocation, complete identity/authoring, real keyboard/VoiceOver/physical-device/security/release and production MRK-18/12 acceptance remain open.
+
+## Historical app-owned recovery checkpoint
 
 MRK-37 adds a confirmed exact-source checkpoint before each document save, explicit close with a current recovery copy, a relaunch recovery inbox and inert native preview. Restoration always creates a separate non-clobbering file; original `.md`/`.mrk` suffixes are preserved. Only a matching checkpoint is retired after a confirmed save. Receipt-aware cleanup retries and newer-edit/composition guards prevent stale recovery claims.
 

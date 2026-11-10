@@ -1,12 +1,12 @@
 # App-owned native collection and recovery validation
 
-MRK-36 and MRK-37 are bounded native iOS research slices related to MRK-R6, R7 and R15, pinned to MRK specification v2. [The recovery checkpoint contract](native-recovery-validation.md) extends the original collection checkpoint below. MRK-18 production collections and MRK-12 integration remain gated. It does not establish general storage or client acceptance.
+MRK-36, MRK-37 and MRK-38 are bounded native iOS research slices related to MRK-R6, R7 and R15, pinned to MRK specification v2. [The recovery checkpoint contract](native-recovery-validation.md) extends the original collection checkpoint below; [native Save As](native-save-as-validation.md) adds explicit destination changes. MRK-18 production collections and MRK-12 integration remain gated. It does not establish general storage or client acceptance.
 
 ## Usable path
 
 The native app now starts with a collection/document browser. New collection creates an ordinary folder inside the app's Documents/MarkrightCollections directory. New document creates an ordinary UTF-8 `.mrk` file, then opens the native preview/source/reading editor. Lists can switch collections and reopen documents. No account or sync service is involved. There is no external-folder picker or import in this slice.
 
-Edits debounce for 300 ms into one save pump per session. A receipt advances the baseline even if newer edits arrive during a write; those newer edits are saved next. Composition defers saving and closing. Close waits for the pump and refuses dismissal on unsaved text, errors or uncertain durability. Errors retain the model and expose Retry save. A divergent file is refused without overwriting its bytes. MRK-37 adds acknowledged recovery close and recovered-copy restoration; general external conflict merge/Save As remains open.
+Edits debounce for 300 ms into one save pump per session. A receipt advances the baseline even if newer edits arrive during a write; those newer edits are saved next. Composition defers saving and closing. Close waits for the pump and refuses dismissal on unsaved text, errors or uncertain durability. Errors retain the model and expose Retry save. A divergent file is refused without overwriting its bytes. MRK-37 adds acknowledged recovery close and recovered-copy restoration; MRK-38 adds app-owned Save As. External conflict merging and provider workflows remain open.
 
 The app uses one storage actor shared across its windows. Separate sessions opening the same revision cannot silently overwrite each other's divergent app writes: the later stale baseline conflicts. Byte comparisons before replacement also detect observed external divergence, but are not an atomic cross-process compare-and-swap. Uncooperative external-write races and external file coordination remain open.
 

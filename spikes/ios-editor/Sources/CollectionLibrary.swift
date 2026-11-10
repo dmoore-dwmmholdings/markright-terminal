@@ -67,7 +67,10 @@ struct CollectionLibrary: View {
                     perform {
                         let filename = value + ".mrk"
                         let document = try await store.createDocument(collection: collection, name: filename)
-                        try await select(collection)
+                        // Preserve the creation receipt even if a later list
+                        // refresh fails; the editor opens the committed file.
+                        documents = []
+                        interruptedWrites = []
                         session = makeSession(document)
                     }
                 }
@@ -76,7 +79,12 @@ struct CollectionLibrary: View {
         }
         .task { perform { try await refresh() } }
         .sheet(item: $session, onDismiss: { perform { try await refresh() } }) { session in
-            DocumentWorkspace(session: session) { self.session = nil }
+            DocumentWorkspace(session: session, collections: collections, create: { collection, name, source in
+                try await store.createDocument(collection: collection, name: name, source: source)
+            }) {
+                collection = session.document.collection
+                self.session = nil
+            }
         }
         .sheet(item: $recoverySelection, onDismiss: { perform { try await refresh() } }) { draft in
             RecoveryWorkspace(draft: draft, collections: collections, restore: { target, name in
@@ -187,15 +195,31 @@ struct CollectionLibrary: View {
 
 private struct DocumentWorkspace: View {
     @Bindable var session: DocumentSession
+    let collections: [String]
+    let create: @Sendable (String, String, String) async throws -> StoredDocument
     let close: () -> Void
     @State private var closing = false
+    @State private var namingDestination = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private var actionLayout: AnyLayout {
+        dynamicTypeSize > .large ? AnyLayout(VStackLayout(alignment: .leading)) : AnyLayout(HStackLayout())
+    }
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading) {
-                Button("Close document") {
-                    closing = true
-                    Task { if await session.flush() { close() }; closing = false }
-                }.foregroundStyle(.primary).frame(minHeight: 44).accessibilityIdentifier("close-document").disabled(closing || session.model.composing)
+                actionLayout {
+                    Button("Close") {
+                        closing = true
+                        Task { if await session.flush() { close() }; closing = false }
+                    }.foregroundStyle(.primary).frame(minHeight: 44)
+                    .accessibilityLabel("Close document").accessibilityIdentifier("close-document")
+                    .disabled(closing || session.model.composing || session.isChangingDestination)
+                    Button { session.prepareSaveAsDialog(); namingDestination = true } label: {
+                        Text("Save as").fixedSize(horizontal: false, vertical: true)
+                    }.foregroundStyle(.primary).frame(minHeight: 44)
+                    .accessibilityLabel("Save as new document").accessibilityIdentifier("save-as-document")
+                    .disabled(closing || session.model.composing || session.isChangingDestination)
+                }
                 Text(session.status).accessibilityIdentifier("document-save-status")
                 if let recoveryStatus = session.recoveryStatus {
                     Text(recoveryStatus).accessibilityIdentifier("document-recovery-status")
@@ -212,5 +236,8 @@ private struct DocumentWorkspace: View {
             EditorScreen(model: session.model, title: session.document.name, onEdit: { session.scheduleSave() })
         }
         .interactiveDismissDisabled(!session.canClose)
+        .sheet(isPresented: $namingDestination, onDismiss: { session.resumeAfterSaveAsDialog() }) {
+            SaveDocumentAsSheet(session: session, collections: collections, create: create) { namingDestination = false }
+        }
     }
 }

@@ -80,6 +80,13 @@ struct SourceBlock: Identifiable, Equatable {
         lines.append((String(scalars[start..<scalars.endIndex]), ""))
         return lines
     }
+    // A native naming sheet temporarily owns the keyboard. Resume the same
+    // source/range in a fresh editor generation after it dismisses, so old
+    // coordinator callbacks cannot alter the resumed session.
+    func resumeEditorAfterDialog() {
+        guard !composing, !readingMode, sourceMode || active != nil else { return }
+        editingGeneration += 1
+    }
     var source: String { sourceMode ? documentSource : blocks.map { $0.source + $0.separatorAfter }.joined() }
     // Keep short reading documents mounted across Dynamic Type relayout, so
     // accessibility elements do not disappear as earlier rows grow. Bound both
