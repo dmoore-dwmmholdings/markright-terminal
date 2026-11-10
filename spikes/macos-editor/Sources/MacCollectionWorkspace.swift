@@ -490,6 +490,13 @@ struct MacCollectionWorkspace: View {
                         Button(name) { Task { await model.openDocument(name) } }
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    CollectionSearchPanel(store: model.store, collection: collection) { name in
+                        let scope = collection
+                        Task {
+                            guard model.selectedCollection == scope else { return }
+                            await model.openDocument(name)
+                        }
+                    }.id(collection)
                 }
                 Divider()
                 Text("Recovery inbox").font(.headline)

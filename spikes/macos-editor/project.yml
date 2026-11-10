@@ -16,6 +16,9 @@ targets:
       - path: Sources
       - path: ../ios-editor/Sources/EditorModel.swift
       - path: ../ios-editor/Sources/SourceSelection.swift
+      - path: ../ios-editor/Sources/CollectionSearch.swift
+      - path: ../ios-editor/Sources/CollectionSearchModel.swift
+      - path: ../ios-editor/Sources/CollectionSearchPanel.swift
       - path: ../ios-editor/Sources/CollectionStore.swift
       - path: ../ios-editor/Sources/RecoveryDraft.swift
       - path: ../ios-editor/Sources/DocumentSession.swift

@@ -13,6 +13,7 @@ let package = Package(
             path: "ios-editor/Sources",
             exclude: [
                 "CollectionLibrary.swift",
+                "CollectionSearchPanel.swift",
                 "DeclarativeDecoder.swift",
                 "Editor.swift",
                 "RecoveryWorkspace.swift",
@@ -22,6 +23,8 @@ let package = Package(
                 "EditorModel.swift",
                 "SourceSelection.swift",
                 "CollectionStore.swift",
+                "CollectionSearch.swift",
+                "CollectionSearchModel.swift",
                 "RecoveryDraft.swift",
                 "DocumentSession.swift"
             ]
@@ -38,6 +41,8 @@ let package = Package(
             sources: [
                 "NativeTestDirectory.swift",
                 "CollectionStoreTests.swift",
+                "CollectionSearchTests.swift",
+                "CollectionSearchModelTests.swift",
                 "DocumentSessionTests.swift",
                 "RecoveryStoreTests.swift",
                 "RecoverySessionTests.swift",

@@ -42,10 +42,12 @@ def main():
     sources = [shared / name for name in (
         "CollectionStore.swift", "RecoveryDraft.swift", "DocumentSession.swift",
         "SourceSelection.swift", "EditorModel.swift",
+        "CollectionSearch.swift", "CollectionSearchModel.swift", "CollectionSearchPanel.swift",
     )] + [
         DIRECTORY / "Sources" / "MacSourceEditor.swift",
         DIRECTORY / "Sources" / "MacCollectionWorkspace.swift",
         DIRECTORY / "NativeCollectionChecks" / "main.swift",
+        DIRECTORY / "NativeCollectionChecks" / "SearchChecks.swift",
     ]
     require_headroom()
     subprocess.run([

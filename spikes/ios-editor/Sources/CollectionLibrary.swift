@@ -148,6 +148,15 @@ struct CollectionLibrary: View {
             Text("Collection and editing prototype.").font(.body).fixedSize(horizontal: false, vertical: true)
             if let errorMessage { Text(errorMessage).accessibilityIdentifier("library-error") }
         }
+        if let collection {
+            CollectionSearchPanel(store: store, collection: collection) { name in
+                let scope = collection
+                perform {
+                    guard self.collection == scope else { return }
+                    try await open(collection: scope, name: name)
+                }
+            }.id(collection)
+        }
     }
     private func perform(_ operation: @escaping @MainActor () async throws -> Void) {
         guard !busy else { return }
