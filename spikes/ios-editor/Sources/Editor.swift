@@ -5,6 +5,7 @@ import UIKit
     var focusesOnAttachment = true
     var allowsMarkdownInsertion = true
     var allowsHeadingNavigation = false
+    var allowsSelectionFind = false
     override func didMoveToWindow() {
         super.didMoveToWindow()
         guard window != nil && focusesOnAttachment else { return }
@@ -43,7 +44,34 @@ import UIKit
     }
 
     @discardableResult func applyHeadingNavigation(_ plan: SourceHeadingNavigationPlan) -> Bool {
-        guard allowsHeadingNavigation, window != nil, isFirstResponder, isEditable, markedTextRange == nil,
+        guard allowsHeadingNavigation else { return false }
+        return applySourceNavigation(plan)
+    }
+
+    func makeSelectionFindMenu() -> UIMenu {
+        let available = allowsSelectionFind && window != nil && isFirstResponder && isEditable &&
+            markedTextRange == nil && selectedRanges.count == 1
+        let report = available ? SourceSelectionFind.make(source: text, selection: selectedRange) : nil
+        var actions: [UIAction] = [(SourceSelectionFind.nextTitle, report?.next),
+                                   (SourceSelectionFind.previousTitle, report?.previous)].map { title, plan in
+            UIAction(title: title, attributes: plan == nil ? [.disabled] : []) { [weak self, plan] _ in
+                guard let plan else { return }
+                self?.applySelectionFind(plan)
+            }
+        }
+        if let message = available ? report?.message : "Find unavailable while editor is inactive." {
+            actions.append(UIAction(title: message, attributes: [.disabled]) { _ in })
+        }
+        return UIMenu(title: "Find selected text", children: actions)
+    }
+
+    @discardableResult func applySelectionFind(_ plan: SourceNavigationPlan) -> Bool {
+        guard allowsSelectionFind else { return false }
+        return applySourceNavigation(plan)
+    }
+
+    @discardableResult private func applySourceNavigation(_ plan: SourceNavigationPlan) -> Bool {
+        guard window != nil, isFirstResponder, isEditable, markedTextRange == nil,
               selectedRanges.count == 1, plan.matches(source: text, selection: selectedRange) else { return false }
         selectedRange = plan.destination
         scrollRangeToVisible(plan.destination)
@@ -82,6 +110,7 @@ struct NativeSourceEditor: UIViewRepresentable {
         let view = SourceTextView()
         view.allowsMarkdownInsertion = wholeDocument
         view.allowsHeadingNavigation = wholeDocument
+        view.allowsSelectionFind = wholeDocument
         view.font = UIFont.preferredFont(forTextStyle: .body)
         view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .secondarySystemBackground
@@ -104,6 +133,7 @@ struct NativeSourceEditor: UIViewRepresentable {
         context.coordinator.onChange = onChange
         (view as? SourceTextView)?.allowsMarkdownInsertion = wholeDocument
         (view as? SourceTextView)?.allowsHeadingNavigation = wholeDocument
+        (view as? SourceTextView)?.allowsSelectionFind = wholeDocument
         Self.apply(value, selection: selection, to: view)
     }
     static func apply(_ value: String, selection: NSRange, to view: UITextView) {
@@ -147,7 +177,7 @@ struct NativeSourceEditor: UIViewRepresentable {
             guard source.allowsMarkdownInsertion else { return UIMenu(children: suggestedActions) }
             guard source.selectedRanges.count == 1,
                   range == source.selectedRange else { return nil }
-            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu(), source.makeOutlineMenu()])
+            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu(), source.makeOutlineMenu(), source.makeSelectionFindMenu()])
         }
     }
 }

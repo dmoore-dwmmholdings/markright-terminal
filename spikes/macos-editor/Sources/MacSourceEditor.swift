@@ -44,6 +44,9 @@ import SwiftUI
             let outline = NSMenuItem(title: "Document outline", action: nil, keyEquivalent: "")
             outline.submenu = makeOutlineMenu()
             menu.addItem(outline)
+            let find = NSMenuItem(title: "Find selected text", action: nil, keyEquivalent: "")
+            find.submenu = makeSelectionFindMenu()
+            menu.addItem(find)
         }
         return menu
     }
@@ -82,6 +85,26 @@ import SwiftUI
     }
 
     @discardableResult func applyHeadingNavigation(_ plan: SourceHeadingNavigationPlan) -> Bool {
+        applySourceNavigation(plan)
+    }
+
+    func makeSelectionFindMenu() -> NSMenu {
+        let menu = NSMenu(title: "Find selected text")
+        menu.autoenablesItems = false
+        let available = window != nil && window?.firstResponder === self && isEditable &&
+            !hasMarkedText() && selectedRanges.count == 1
+        let report = available ? SourceSelectionFind.make(source: string, selection: selectedRange()) : nil
+        menu.addItem(MacSourceNavigationMenuItem(title: SourceSelectionFind.nextTitle, sourceView: self, plan: report?.next))
+        menu.addItem(MacSourceNavigationMenuItem(title: SourceSelectionFind.previousTitle, sourceView: self, plan: report?.previous))
+        if let message = available ? report?.message : "Find unavailable while editor is inactive." {
+            let status = NSMenuItem(title: message, action: nil, keyEquivalent: "")
+            status.isEnabled = false
+            menu.addItem(status)
+        }
+        return menu
+    }
+
+    @discardableResult func applySourceNavigation(_ plan: SourceNavigationPlan) -> Bool {
         guard let window, window.firstResponder === self, isEditable, !hasMarkedText(),
               selectedRanges.count == 1, plan.matches(source: string, selection: selectedRange()) else { return false }
         setSelectedRange(plan.destination)
@@ -106,6 +129,29 @@ import SwiftUI
         // normally emits both edit and final selection notifications as well.
         onTextStateChanged?()
         return true
+    }
+}
+
+/// The item retains its target (itself), but never the source view. Captured
+/// plans are checked again by the same selection-only native execution path.
+@MainActor private final class MacSourceNavigationMenuItem: NSMenuItem {
+    private weak var sourceView: MacSourceTextView?
+    private let plan: SourceNavigationPlan?
+
+    init(title: String, sourceView: MacSourceTextView, plan: SourceNavigationPlan?) {
+        self.sourceView = sourceView; self.plan = plan
+        super.init(title: title, action: #selector(navigate(_:)), keyEquivalent: "")
+        target = self
+        isEnabled = plan != nil
+    }
+    required init(coder: NSCoder) {
+        plan = nil
+        super.init(coder: coder)
+        isEnabled = false
+    }
+    @objc private func navigate(_ sender: Any?) {
+        guard let plan else { return }
+        sourceView?.applySourceNavigation(plan)
     }
 }
 

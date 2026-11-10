@@ -81,17 +81,23 @@ struct SourceOutline: Sendable {
     func plan(for heading: SourceHeading, selection: NSRange) -> SourceHeadingNavigationPlan? {
         guard message == nil, headings.contains(heading), SourceSelection.isValid(selection, in: source),
               SourceSelection.isValid(heading.range, in: source) else { return nil }
-        return SourceHeadingNavigationPlan(source: source, selection: selection, destination: heading.range)
+        return SourceNavigationPlan.make(source: source, selection: selection, destination: heading.range)
     }
 }
 
-struct SourceHeadingNavigationPlan: Sendable {
+struct SourceNavigationPlan: Sendable {
     let source: String
     let selection: NSRange
     let destination: NSRange
 
-    fileprivate init(source: String, selection: NSRange, destination: NSRange) {
+    private init(source: String, selection: NSRange, destination: NSRange) {
         self.source = source; self.selection = selection; self.destination = destination
+    }
+
+    static func make(source: String, selection: NSRange, destination: NSRange) -> Self? {
+        guard SourceSelection.isValid(selection, in: source),
+              SourceSelection.isValid(destination, in: source) else { return nil }
+        return Self(source: source, selection: selection, destination: destination)
     }
 
     func matches(source: String, selection: NSRange) -> Bool {
@@ -99,3 +105,6 @@ struct SourceHeadingNavigationPlan: Sendable {
             SourceSelection.isValid(destination, in: source)
     }
 }
+
+// Preserve the heading API and its outline membership/scope guards.
+typealias SourceHeadingNavigationPlan = SourceNavigationPlan

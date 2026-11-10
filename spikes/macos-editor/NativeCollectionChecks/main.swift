@@ -428,10 +428,11 @@ private extension CollectionStore {
     try await runMarkdownHeadingQuoteChecks()
     try await runMarkdownTableChecks()
     try await runSourceOutlineChecks()
+    try await runSourceSelectionFindChecks()
     try require(!NSApplication.shared.isActive && NSApplication.shared.windows.allSatisfy { !$0.isVisible },
                 "Offscreen checks activated the application or showed a window")
     try require(MacCollectionWorkspaceManager.shared.controller == nil, "Probe opened the real collection root")
-    print("Passed 18 focused native AppKit check groups. No OS exporter/provider, real keyboard/IME, VoiceOver, full parser/preview, production storage/security or release acceptance claimed.")
+    print("Passed 19 focused native AppKit check groups. No OS exporter/provider, real keyboard/IME, VoiceOver, full parser/preview, production storage/security or release acceptance claimed.")
 }
 
 @main private enum NativeCollectionChecks {
