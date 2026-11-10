@@ -1,0 +1,19 @@
+# MRK-51 bounded native outline-label candidate
+
+This local source-only follow-up starts from MRK-50 checkpoint `6339b80` on `spike/native-outline-label-bounds`, reusing its worktree and owned caches. The MRK-50 candidate is still unverified; inherited MRK-49 test/build counts do not qualify either new candidate. **MRK-51 compilation and execution are pending.** It does not accept blocked production authoring, complete Markdown parsing or accessibility.
+
+The existing MRK-47 source outline abbreviates native labels at 80 Swift Characters. A combining sequence can form a single Character while retaining most of the 64 KiB source allowance in its label. The follow-up retains the 80-Character display-body limit and adds a **320 UTF-16-unit display-body limit**. Only complete grapheme clusters are appended. If the next whole cluster exceeds either remaining budget, the label ends with an explicit ellipsis. A first cluster exceeding the unit budget produces `…`; a genuinely empty heading keeps `(empty heading)`.
+
+The ellipsis is one additional UTF-16 unit, so abbreviated title bodies fit at most 321 units including it. Level and physical-line metadata remain in the native menu title. Control sanitation is unchanged. This is display abbreviation only: original source bytes, BOM, physical endings, full heading ranges, line/level information, exact-source captured plans, native source selection and destination remain authoritative. Navigation selects the complete original heading even when its label is only an ellipsis. Source scanning still refuses above 64 KiB or 128 headings and retains its explicit unsupported-context behavior. No new rendering, resolution, file/clipboard/provider/network/script capability is added.
+
+## Authored checks and review
+
+Two additional shared methods exercise an oversized combining cluster with BOM/NFD/mixed endings and its complete navigation range; exact/over-unit-budget combining suffixes; and whole supplementary flag graphemes at the 80-Character/320-unit boundary. Existing Character truncation, empty/control sanitation, fence/HTML/byte/heading limits and stale/range regressions remain included. No UIKit/AppKit action wiring changed. Independent read-only review found no blocking issue in the display budgets, whole-grapheme behavior, original-source authority, navigation ranges or authored boundaries. It gives GO for a local checkpoint pending verification. `git diff --check` passes. No build or test has executed for this candidate; execution evidence remains separate from source review.
+
+The UIKit task-refusal fixture's base checkpoint `6339b80` also now requires exactly one foreground host scene before creating a synthetic window; ambiguous/background-only setups fail rather than choosing an arbitrary connected scene. This fixture change is also uncompiled/unrun. No test window was created during source work.
+
+## Coordination and remaining gates
+
+Work is limited to source, authored tests, documentation and read-only inspection while the shared Xcode slot remains occupied by other owners' jobs. No Markright heavy job started, and no other process was terminated or altered. A quiet-slot monitor launches nothing automatically. Serial shared tests, invisible AppKit checks and unsigned Mac/iOS test-bundle builds still require a fresh capacity/coordination check, at least 20 GiB free and at most two compiler jobs. Existing resources are reused; the visible Debug app/preview and other owners' artifacts stay preserved.
+
+No push, alternate publication, main merge, deployment, credential creation or held documentation write occurred. MRK-46 preview AX observation, attended VoiceOver, attached UIKit interaction, actual OS input/IME, physical devices, full parser/renderer/authoring, ingestion/isolation/provider/security and release gates remain open. A display-size bound is not a latency or accessibility acceptance result.

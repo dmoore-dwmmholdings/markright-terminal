@@ -14,6 +14,8 @@ struct SourceHeading: Sendable, Equatable {
 struct SourceOutline: Sendable {
     static let maximumBytes = 65_536
     static let maximumHeadings = 128
+    static let maximumTitleCharacters = 80
+    static let maximumTitleUTF16 = 320
     let source: String
     let headings: [SourceHeading]
     let message: String?
@@ -61,7 +63,7 @@ struct SourceOutline: Sendable {
                     let safe = String(trimmed.unicodeScalars.map {
                         CharacterSet.controlCharacters.contains($0) || $0 == "\u{2028}" || $0 == "\u{2029}" ? " " : String($0)
                     }.joined())
-                    let label = safe.isEmpty ? "(empty heading)" : String(safe.prefix(80)) + (safe.count > 80 ? "…" : "")
+                    let label = abbreviatedTitle(safe)
                     headings.append(SourceHeading(range: NSRange(location: start, length: end - start),
                                                   level: run, line: line, title: label))
                     guard headings.count <= maximumHeadings else { return unavailable("Outline unavailable above 128 headings.") }
@@ -76,6 +78,22 @@ struct SourceOutline: Sendable {
             line += 1
         }
         return Self(source: source, headings: headings, message: headings.isEmpty ? "No top-level ATX headings." : nil)
+    }
+
+    /// Limit native display text independently from the preserved source row.
+    /// Keep whole graphemes; a single oversized cluster becomes an ellipsis.
+    private static func abbreviatedTitle(_ safe: String) -> String {
+        guard !safe.isEmpty else { return "(empty heading)" }
+        var title = "", characters = 0, units = 0
+        for character in safe {
+            guard characters < maximumTitleCharacters else { return title + "…" }
+            let length = String(character).utf16.prefix(maximumTitleUTF16 + 1).count
+            guard length <= maximumTitleUTF16 - units else { return title + "…" }
+            title.append(character)
+            characters += 1
+            units += length
+        }
+        return title
     }
 
     func plan(for heading: SourceHeading, selection: NSRange) -> SourceHeadingNavigationPlan? {
