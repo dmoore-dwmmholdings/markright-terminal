@@ -87,6 +87,18 @@ private struct PreviewCheckFailure: Error, CustomStringConvertible {
     previewAXNodes(root).contains { ($0.label == name || $0.title == name) && $0.value == "Open" }
 }
 
+/// Compare NSView's typed public getters with the selector-based walk. Reads
+/// only this owned view; it does not enable AX, order a window or invoke input.
+@MainActor private func previewTypedAXDiagnostic(_ view: NSView) {
+    let children = view.accessibilityChildren()?.count ?? 0
+    let navigation = view.accessibilityChildrenInNavigationOrder()?.count ?? 0
+    let contents = view.accessibilityContents()?.count ?? 0
+    let identifier = view.accessibilityIdentifier()
+    let label = String((view.accessibilityLabel() ?? "nil").prefix(180))
+    let role = String(describing: view.accessibilityRole())
+    print("[PreviewChecks] typed local NSView AX: element=\(view.isAccessibilityElement()), role=\(role), id=\(identifier), label=\(label), children=\(children), navigation=\(navigation), contents=\(contents)")
+}
+
 /// Optional local paint diagnostic of this synthetic fixture only. It neither
 /// captures the desktop nor changes window visibility/accessibility settings.
 @MainActor private func previewReadablePNG(_ bitmap: NSBitmapImageRep) throws -> Data {
@@ -199,6 +211,9 @@ private struct PreviewCheckFailure: Error, CustomStringConvertible {
             $0.title?.contains("Synthetic SwiftUI paint control") == true || $0.value?.contains("Synthetic SwiftUI paint control") == true
     }
     print("[PreviewChecks] plain SwiftUI control semantic observation: \(observed); diagnostic only")
+    previewTypedAXDiagnostic(host)
+    let afterTyped = previewAXNodes(host, diagnose: true).contains { $0.id == "preview-paint-control" }
+    print("[PreviewChecks] control identifier after typed getters: \(afterTyped); diagnostic only")
 }
 
 private struct PreviewFixture {
@@ -321,6 +336,7 @@ private struct PreviewDiskSnapshot: Equatable {
         }
     } catch {
         let nodes = previewAXNodes(root, diagnose: true)
+        previewTypedAXDiagnostic(root)
         let textMatched = previewPanelText(root)?.contains("Inactive bold label") == true
         FileHandle.standardError.write(Data("[PreviewChecks] enabled=\(workspace.showsSourcePreview), sourceFrame=\(source.frame), rootFrame=\(root.frame), nodes=\(nodes.count), panelFound=\(nodes.contains { $0.id == "live-preview-panel" }), previewTextMatched=\(textMatched), openMarker=\(previewOpenDocument("First.md", root: root))\n".utf8))
         for node in nodes.filter({ $0.id != nil || $0.label != nil || $0.title != nil || $0.value != nil }).prefix(90) {
