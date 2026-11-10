@@ -13,7 +13,7 @@ final class MarkdownInsertionTests: XCTestCase {
     }
 
     func testTitlesAndEmptySelectionPlaceholdersSelectBodyInsideMarkers() throws {
-        XCTAssertEqual(MarkdownInsertionCommand.allCases.map(\.title), ["Bold", "Italic", "Inline code", "Link", "Image reference", "Code block", "Bulleted list", "Numbered list", "Task list"])
+        XCTAssertEqual(MarkdownInsertionCommand.allCases.map(\.title), ["Bold", "Italic", "Inline code", "Link", "Image reference", "Code block", "Bulleted list", "Numbered list", "Task list", "Table"])
         for (command, replacement, offset, body) in [
             (MarkdownInsertionCommand.bold, "**text**", 2, "text"),
             (.italic, "*text*", 1, "text"),

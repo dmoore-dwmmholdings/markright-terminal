@@ -30,7 +30,8 @@ let package = Package(
                 "RecoveryDraft.swift",
                 "DocumentSession.swift",
                 "SourceCopyExport.swift",
-                "MarkdownInsertion.swift"
+                "MarkdownInsertion.swift",
+                "MarkdownTableInsertion.swift"
             ]
         ),
         .testTarget(
@@ -43,7 +44,8 @@ let package = Package(
                 "NativeSelectionTests.swift",
                 "NativeMarkdownInsertionTests.swift",
                 "NativeMarkdownStructureInsertionTests.swift",
-                "NativeMarkdownListInsertionTests.swift"
+                "NativeMarkdownListInsertionTests.swift",
+                "NativeMarkdownTableInsertionTests.swift"
             ],
             sources: [
                 "NativeTestDirectory.swift",
@@ -58,7 +60,8 @@ let package = Package(
                 "SourceCopyExportTests.swift",
                 "MarkdownInsertionTests.swift",
                 "MarkdownStructureInsertionTests.swift",
-                "MarkdownListInsertionTests.swift"
+                "MarkdownListInsertionTests.swift",
+                "MarkdownTableInsertionTests.swift"
             ]
         )
     ],

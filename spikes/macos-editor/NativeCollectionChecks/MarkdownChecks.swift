@@ -101,7 +101,13 @@ private func markdownStage(_ label: String) {
     undoDelegate.manager.groupsByEvent = false
     window.delegate = undoDelegate
     let host = NSHostingView(rootView: MacSourceEditor(value: "Cafe\u{301} code", selection: .init(location: 0, length: 5), isEditable: true) { _, _, _ in })
-    window.contentView = host
+    // AppKit-only focus controls belong beside the hosting view, not inside
+    // SwiftUI's managed child hierarchy.
+    let container = NSView(frame: NSRect(x: 0, y: 0, width: 650, height: 300))
+    host.frame = container.bounds
+    host.autoresizingMask = [.width, .height]
+    container.addSubview(host)
+    window.contentView = container
     defer { window.contentView = nil; window.delegate = nil; window.close() }
     try await markdownWait("stale Markdown source attachment") { markdownFind(host) != nil }
     guard let text = markdownFind(host) else { throw MarkdownCheckFailure("Stale Markdown source missing") }
@@ -125,7 +131,7 @@ private func markdownStage(_ label: String) {
     text.isEditable = true
     let sentinel = MarkdownFocusSentinel(frame: .zero)
     markdownStage("non-source focus refusal")
-    host.addSubview(sentinel)
+    container.addSubview(sentinel)
     try markdownRequire(window.makeFirstResponder(sentinel), "Could not prepare non-source focus")
     try markdownRequire(!text.applyMarkdownInsertion(plan) && window.firstResponder === sentinel,
                         "Markdown action edited or took focus from another responder")

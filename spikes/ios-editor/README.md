@@ -6,6 +6,12 @@ The default launch now creates and reopens app-owned collection folders and UTF-
 
 MRK-39 extracts `EditorModel` unchanged into a Foundation/Observation source shared with the separate native macOS collection workspace. Its storage/lifecycle corpus also runs through `spikes/Package.swift` on macOS. At the MRK-39 checkpoint, the iOS native/model/decoder shard passed 91 tests with zero failures/skips/result-bundle runtime warnings. Its workflow shard had 10 UI passes and one recovery-input failure; a full attempt remained unfinalized. Isolated diagnostic runs were blocked first by process exhaustion and then by unexplained boot error22 despite device/runtime availability. The stricter recovery harness now fails before termination unless exact source/current-checkpoint prerequisites hold, retains input diagnostics, and adds typing across the error-header transition without refocusing. It compiles with warnings-as-errors; its selected runtime cases have not run. Current UI acceptance remains open; the prior MRK-38 114-pass checkpoint below is historical evidence. See [the shared-core and desktop evidence](../../docs/native-macos-collections-validation.md).
 
+## Native table source checkpoint
+
+MRK-45 adds **Table** to the whole-document Source menu: create a two-column starter on an empty row or convert a selected rectangular tab-separated grid, then edit the selected first data cell. Supported cell text and original row endings remain literal; ragged/unsupported grids are refused. No pasteboard/file import, grid UI, escaping or complete rendering is added.
+
+The app and test targets compile with warnings as errors (`build/MRK45-native-ios-build-20261110.log`), including one parameterized UIKit refusal method for grid/starter plans. No iOS runtime case ran. Shared Mac tests pass 144/0 and all 16 authored AppKit/Transferable groups pass. The existing TextKit, simulator/recovery-input, OS input/VoiceOver/device/security/release gates remain open. See [the contract and diagnostic evidence](../../docs/native-markdown-table-validation.md).
+
 ## Native list insertion checkpoint
 
 MRK-44 adds **Bulleted list**, **Numbered list** and **Task list** to the whole-document Source menu. Whole-line selections receive literal markers, preserving BOM position, mixed endings and blank rows; an existing-line caret inserts only its marker, while an empty line receives selected `item`. Partial-line selections are refused, with no implicit expansion, toggling, autoindent or interactive-checkbox claim.

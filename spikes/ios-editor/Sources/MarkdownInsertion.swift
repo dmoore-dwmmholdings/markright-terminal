@@ -10,6 +10,7 @@ enum MarkdownInsertionCommand: CaseIterable, Sendable, Equatable {
     case bulletedList
     case numberedList
     case taskList
+    case table
 
     var title: String {
         switch self {
@@ -22,6 +23,7 @@ enum MarkdownInsertionCommand: CaseIterable, Sendable, Equatable {
         case .bulletedList: "Bulleted list"
         case .numberedList: "Numbered list"
         case .taskList: "Task list"
+        case .table: "Table"
         }
     }
 }
@@ -52,6 +54,7 @@ struct MarkdownInsertionPlan: Sendable {
         case .link: placeholder = "link text"
         case .imageReference: placeholder = "alt text"
         case .bulletedList, .numberedList, .taskList: placeholder = "item"
+        case .table: placeholder = ""
         }
         let body = selection.length == 0 ? placeholder : selected
         let opening: String
@@ -98,6 +101,8 @@ struct MarkdownInsertionPlan: Sendable {
         case .bulletedList, .numberedList, .taskList:
             return makeList(command: command, source: source, selection: selection, selected: selected,
                             sourceBytes: sourceBytes, selectedBytes: selectedBytes)
+        case .table:
+            return MarkdownTableInsertion.make(source: source, selection: selection)
         }
         // The body and delimiter are bounded by the selection budget before any
         // replacement is built; the unchanged document is never re-encoded here.

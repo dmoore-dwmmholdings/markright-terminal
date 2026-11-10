@@ -26,6 +26,7 @@ targets:
       - path: ../ios-editor/Sources/SourceCopyTransfer.swift
       - path: ../ios-editor/Sources/SourceCopyExporter.swift
       - path: ../ios-editor/Sources/MarkdownInsertion.swift
+      - path: ../ios-editor/Sources/MarkdownTableInsertion.swift
       - path: Resources/Editor
         type: folder
         buildPhase: resources
