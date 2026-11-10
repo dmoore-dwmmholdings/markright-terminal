@@ -1,0 +1,29 @@
+# MRK-47 native source-outline candidate
+
+This independent, unmerged research candidate implements part of proposed MRK v2 R9. It starts from public main `c414fd0`, in branch `spike/native-heading-navigation` and a separate worktree, rather than including the held MRK-46 preview checkpoint. It does not start or accept blocked production MRK-21, complete Markdown outline/parser behavior, accessibility or native-client release readiness.
+
+## Implemented behavior and limits
+
+The whole-document native source editor gains a **Document outline** submenu: macOS contextual menu or iOS text edit menu. Entries show heading level, physical line number and a literal title. Choosing an entry selects and scrolls to that physical heading in the same editor. It does not insert text, replace the view, request focus, change editor generation, register a text undo step, resolve a URL or access files. Menu actions retain their plans and weakly reference the native source view.
+
+The pure shared scanner accepts up to 64 KiB of source and 128 headings. It recognizes top-level ATX rows with one to six ASCII hash marks, zero to three leading ASCII spaces, and an ASCII space/tab or end of row after the marks. Setext and nested/container headings are outside this slice. Empty headings have a visible label. Labels preserve literal markup, visibly abbreviate after 80 Characters and replace controls/Unicode line separators with spaces for the menu only. Closing hash marks are kept literally in labels; labels are not rendered Markdown.
+
+Ranges use global UTF-16 offsets into the exact captured source. Physical lines retain LF/CRLF/CR distinctions. An initial BOM is excluded from heading recognition and selected heading range, while remaining in source. Fenced bodies are skipped with same-character backtick/tilde, opening-length and whitespace-only closing-tail checks, including unclosed fences through EOF. Unsupported backtick-info source and any HTML-like `<` outside fenced code disable the entire report explicitly. This intentionally also refuses plain comparisons/angle destinations containing `<`; no complete HTML or Markdown context parser is claimed. Limit/unavailable/no-heading states produce a disabled explanatory menu item rather than partial results.
+
+A navigation plan captures exact source bytes and the original menu selection. The native action rechecks that snapshot, a valid destination, attachment, first-responder ownership, editability, single selection and absence of marked text. UIKit additionally restricts the capability to the whole-document source field and retains the existing edit-menu range guard. Stale menus cannot redirect a changed caret or document.
+
+Read-only review found that macOS previously scheduled autosave on selection-only source reports. The candidate still reports every selection, but schedules/cancels save only when source revision or composition state changes. Composition start and end both remain significant; a heading jump must not restart a conflicted save pump or rewrite recovery. This change needs actual native workflow verification before acceptance.
+
+## Evidence and pending checks
+
+The shared Swift corpus passes **154 tests, zero failures**, with two jobs and warnings as errors. Ten new groups cover exact Unicode/BOM/mixed-ending ranges, physical lines, ATX boundaries, fence closure/unclosed fences, whole-report HTML fallback, exact byte/head count limits, literal bounded labels, invalid UTF-16/CRLF/overflow selections, and exact-source/caret staleness. Evidence: `spikes/macos-editor/build/MRK47-shared-core-20261110.log`. This count starts from main's 144 shared tests; it does not include MRK-46's twelve projection groups. Shared implementation/tests are unchanged since that successful run; the later UIKit-only refusal case is excluded from the Mac package.
+
+The prepared AppKit check uses synthetic fixture source and invisible windows, authored local menu activation, native undo/redo and positive refusal controls. Its workspace case snapshots exact disk bytes/modification times and current recovery ID, checks actual source/model selection and stable generation/focus, and waits 650 ms after clean/conflicted navigation, exceeding the session's 300 ms save debounce. Those are assertions to execute, not passing evidence. A prepared UIKit detached/scope-refusal case is likewise uncompiled/unrun. The native runner will print 17 groups only if the entire existing suite and new outline group pass.
+
+**Native AppKit compilation/probe, full unsigned Mac app build and iOS build-for-testing have not run.** A fresh password-manager validation hold began at 2026-11-10 16:55:49 UTC and runs until 17:25:49 UTC, subject to later coordination. The current shared check finished before that hold, and read-only process inventory confirmed zero owned heavy jobs across both Markright worktrees. No new probe, app build, simulator job or download started during the hold.
+
+## Resume and preserved gates
+
+After resource coordination permits and capacity is checked, compile/run the existing bounded native runner, inspect every new refusal and the settled conflict checkpoint assertion, then build the unsigned Mac and generic iOS test targets serially with two jobs. Keep build products separate from the visible Debug app. Do not infer UIKit runtime behavior from compilation. Native failures require investigation rather than an acceptance claim.
+
+The MRK-46 rendered-preview gate and held public push are untouched. Existing TextKit diagnostic, simulator boot error 22/recovery-input failure, attended VoiceOver, OS menus/keyboard/IME/undo, physical devices, full parser/renderer/authoring, ingestion/network isolation/provider and release gates remain open. No denied documentation writes or publication action was retried. No Firebase, credentials, deployment or simulator repair is included.

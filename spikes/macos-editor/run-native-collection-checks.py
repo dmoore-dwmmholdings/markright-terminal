@@ -56,7 +56,7 @@ def main():
         "SourceSelection.swift", "EditorModel.swift",
         "CollectionSearch.swift", "CollectionSearchModel.swift", "CollectionSearchPanel.swift",
         "SourceCopyExport.swift", "SourceCopyTransfer.swift", "SourceCopyExporter.swift",
-        "MarkdownInsertion.swift", "MarkdownTableInsertion.swift",
+        "MarkdownInsertion.swift", "MarkdownTableInsertion.swift", "SourceOutline.swift",
     )] + [
         DIRECTORY / "Sources" / "MacSourceEditor.swift",
         DIRECTORY / "Sources" / "MacCollectionWorkspace.swift",
@@ -67,10 +67,11 @@ def main():
         DIRECTORY / "NativeCollectionChecks" / "StructureChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "ListChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "TableChecks.swift",
+        DIRECTORY / "NativeCollectionChecks" / "OutlineChecks.swift",
     ]
     require_headroom()
     subprocess.run([
-        "/usr/bin/xcrun", "swiftc", "-swift-version", "6", "-warnings-as-errors",
+        "/usr/bin/xcrun", "swiftc", "-j", "2", "-swift-version", "6", "-warnings-as-errors",
         "-parse-as-library", "-target", f"{platform.machine()}-apple-macos14.0",
         "-module-cache-path", str(cache), *map(str, sources), "-o", str(executable),
     ], cwd=ROOT, check=True, timeout=TIMEOUT_SECONDS)

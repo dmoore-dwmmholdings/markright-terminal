@@ -41,6 +41,9 @@ import SwiftUI
             let item = NSMenuItem(title: "Insert Markdown", action: nil, keyEquivalent: "")
             item.submenu = makeMarkdownMenu()
             menu.addItem(item)
+            let outline = NSMenuItem(title: "Document outline", action: nil, keyEquivalent: "")
+            outline.submenu = makeOutlineMenu()
+            menu.addItem(outline)
         }
         return menu
     }
@@ -55,6 +58,36 @@ import SwiftUI
             menu.addItem(MacMarkdownInsertionMenuItem(title: command.title, sourceView: self, plan: plan))
         }
         return menu
+    }
+
+    func makeOutlineMenu() -> NSMenu {
+        let menu = NSMenu(title: "Document outline")
+        menu.autoenablesItems = false
+        guard window != nil && window?.firstResponder === self && isEditable &&
+            !hasMarkedText() && selectedRanges.count == 1 else {
+            let item = NSMenuItem(title: "Outline unavailable while editor is inactive.", action: nil, keyEquivalent: "")
+            item.isEnabled = false; menu.addItem(item); return menu
+        }
+        let outline = SourceOutline.make(source: string)
+        if let message = outline.message {
+            let item = NSMenuItem(title: message, action: nil, keyEquivalent: "")
+            item.isEnabled = false; menu.addItem(item)
+        } else {
+            for heading in outline.headings {
+                guard let plan = outline.plan(for: heading, selection: selectedRange()) else { continue }
+                menu.addItem(MacHeadingMenuItem(title: heading.menuTitle, sourceView: self, plan: plan))
+            }
+        }
+        return menu
+    }
+
+    @discardableResult func applyHeadingNavigation(_ plan: SourceHeadingNavigationPlan) -> Bool {
+        guard let window, window.firstResponder === self, isEditable, !hasMarkedText(),
+              selectedRanges.count == 1, plan.matches(source: string, selection: selectedRange()) else { return false }
+        setSelectedRange(plan.destination)
+        scrollRangeToVisible(plan.destination)
+        onTextStateChanged?()
+        return selectedRange() == plan.destination
     }
 
     @discardableResult func applyMarkdownInsertion(_ plan: MarkdownInsertionPlan) -> Bool {
@@ -73,6 +106,26 @@ import SwiftUI
         // normally emits both edit and final selection notifications as well.
         onTextStateChanged?()
         return true
+    }
+}
+
+@MainActor private final class MacHeadingMenuItem: NSMenuItem {
+    private weak var sourceView: MacSourceTextView?
+    private let plan: SourceHeadingNavigationPlan?
+
+    init(title: String, sourceView: MacSourceTextView, plan: SourceHeadingNavigationPlan) {
+        self.sourceView = sourceView; self.plan = plan
+        super.init(title: title, action: #selector(jump(_:)), keyEquivalent: "")
+        target = self
+    }
+    required init(coder: NSCoder) {
+        plan = nil
+        super.init(coder: coder)
+        isEnabled = false
+    }
+    @objc private func jump(_ sender: Any?) {
+        guard let plan else { return }
+        sourceView?.applyHeadingNavigation(plan)
     }
 }
 

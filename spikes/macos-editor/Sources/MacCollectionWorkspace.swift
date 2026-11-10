@@ -576,8 +576,12 @@ struct MacCollectionWorkspace: View {
                 MacSourceEditor(value: session.model.documentSource, selection: session.model.documentSelection,
                                 isEditable: !model.isBusy && !model.hasNamingDialog) { value, composing, selection in
                     guard model.session?.id == session.id else { return }
+                        let revision = session.model.sourceRevision
+                        let wasComposing = session.model.composing
                     session.model.updateDocumentSource(value, composing: composing, generation: generation, selection: selection)
-                    session.scheduleSave()
+                        if session.model.sourceRevision != revision || wasComposing != session.model.composing {
+                            session.scheduleSave()
+                        }
                 }.id("\(session.id)-\(generation)")
             }
         } else {

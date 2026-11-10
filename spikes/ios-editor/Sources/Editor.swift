@@ -4,6 +4,7 @@ import UIKit
 @MainActor final class SourceTextView: UITextView {
     var focusesOnAttachment = true
     var allowsMarkdownInsertion = true
+    var allowsHeadingNavigation = false
     override func didMoveToWindow() {
         super.didMoveToWindow()
         guard window != nil && focusesOnAttachment else { return }
@@ -23,6 +24,31 @@ import UIKit
             }
         }
         return UIMenu(title: "Insert Markdown", children: actions)
+    }
+
+    func makeOutlineMenu() -> UIMenu {
+        guard allowsHeadingNavigation, window != nil, isFirstResponder, isEditable,
+              markedTextRange == nil, selectedRanges.count == 1 else {
+            return UIMenu(title: "Document outline", children: [UIAction(title: "Outline unavailable while editor is inactive.", attributes: [.disabled]) { _ in }])
+        }
+        let outline = SourceOutline.make(source: text)
+        if let message = outline.message {
+            return UIMenu(title: "Document outline", children: [UIAction(title: message, attributes: [.disabled]) { _ in }])
+        }
+        let actions = outline.headings.compactMap { heading -> UIAction? in
+            guard let plan = outline.plan(for: heading, selection: selectedRange) else { return nil }
+            return UIAction(title: heading.menuTitle) { [weak self, plan] _ in self?.applyHeadingNavigation(plan) }
+        }
+        return UIMenu(title: "Document outline", children: actions)
+    }
+
+    @discardableResult func applyHeadingNavigation(_ plan: SourceHeadingNavigationPlan) -> Bool {
+        guard allowsHeadingNavigation, window != nil, isFirstResponder, isEditable, markedTextRange == nil,
+              selectedRanges.count == 1, plan.matches(source: text, selection: selectedRange) else { return false }
+        selectedRange = plan.destination
+        scrollRangeToVisible(plan.destination)
+        (delegate as? NativeSourceEditor.Coordinator)?.report(self)
+        return selectedRange == plan.destination
     }
 
     @discardableResult func applyMarkdownInsertion(_ plan: MarkdownInsertionPlan) -> Bool {
@@ -55,6 +81,7 @@ struct NativeSourceEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let view = SourceTextView()
         view.allowsMarkdownInsertion = wholeDocument
+        view.allowsHeadingNavigation = wholeDocument
         view.font = UIFont.preferredFont(forTextStyle: .body)
         view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .secondarySystemBackground
@@ -76,6 +103,7 @@ struct NativeSourceEditor: UIViewRepresentable {
     func updateUIView(_ view: UITextView, context: Context) {
         context.coordinator.onChange = onChange
         (view as? SourceTextView)?.allowsMarkdownInsertion = wholeDocument
+        (view as? SourceTextView)?.allowsHeadingNavigation = wholeDocument
         Self.apply(value, selection: selection, to: view)
     }
     static func apply(_ value: String, selection: NSRange, to view: UITextView) {
@@ -119,7 +147,7 @@ struct NativeSourceEditor: UIViewRepresentable {
             guard source.allowsMarkdownInsertion else { return UIMenu(children: suggestedActions) }
             guard source.selectedRanges.count == 1,
                   range == source.selectedRange else { return nil }
-            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu()])
+            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu(), source.makeOutlineMenu()])
         }
     }
 }

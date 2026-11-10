@@ -6,6 +6,8 @@ The native iOS prototype supports app-owned collections, document editing/autosa
 
 The publication status is recorded in [docs/github-destination.md](docs/github-destination.md). [The publication review](docs/publication-review.md) explains history privacy cleanup and maps earlier research checkpoint IDs to public commits.
 
+An **unmerged native source-outline candidate** adds a bounded heading-navigation menu to the native whole-document editors. It passes 154 shared Mac tests, including ten new outline groups. Native menu/undo/recovery probes and full Mac/iOS builds are still pending resource coordination. [Candidate behavior, evidence and limits](docs/native-source-outline-validation.md) distinguish implementation from acceptance.
+
 ## Reproduce
 
 - Node 22+: `npm ci --ignore-scripts`, then `npm test`.
