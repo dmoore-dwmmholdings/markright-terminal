@@ -46,6 +46,7 @@ let package = Package(
                 "NativeMarkdownInsertionTests.swift",
                 "NativeMarkdownStructureInsertionTests.swift",
                 "NativeMarkdownListInsertionTests.swift",
+                "NativeMarkdownHeadingQuoteInsertionTests.swift",
                 "NativeMarkdownTableInsertionTests.swift",
                 "NativeSourceOutlineTests.swift"
             ],
@@ -63,6 +64,7 @@ let package = Package(
                 "MarkdownInsertionTests.swift",
                 "MarkdownStructureInsertionTests.swift",
                 "MarkdownListInsertionTests.swift",
+                "MarkdownHeadingQuoteInsertionTests.swift",
                 "MarkdownTableInsertionTests.swift",
                 "SourceOutlineTests.swift"
             ]

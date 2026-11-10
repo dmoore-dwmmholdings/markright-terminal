@@ -66,6 +66,7 @@ def main():
         DIRECTORY / "NativeCollectionChecks" / "MarkdownChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "StructureChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "ListChecks.swift",
+        DIRECTORY / "NativeCollectionChecks" / "HeadingQuoteChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "TableChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "OutlineChecks.swift",
     ]

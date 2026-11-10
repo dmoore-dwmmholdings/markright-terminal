@@ -10,6 +10,10 @@ enum MarkdownInsertionCommand: CaseIterable, Sendable, Equatable {
     case bulletedList
     case numberedList
     case taskList
+    case heading1
+    case heading2
+    case heading3
+    case blockquote
     case table
 
     var title: String {
@@ -23,6 +27,10 @@ enum MarkdownInsertionCommand: CaseIterable, Sendable, Equatable {
         case .bulletedList: "Bulleted list"
         case .numberedList: "Numbered list"
         case .taskList: "Task list"
+        case .heading1: "Heading 1"
+        case .heading2: "Heading 2"
+        case .heading3: "Heading 3"
+        case .blockquote: "Blockquote"
         case .table: "Table"
         }
     }
@@ -33,7 +41,9 @@ enum MarkdownInsertionCommand: CaseIterable, Sendable, Equatable {
 struct MarkdownInsertionPlan: Sendable {
     static let maximumSourceBytes = 1 * 1024 * 1024
     static let maximumSelectionBytes = 64 * 1024
-    static let maximumListLines = 256
+    static let maximumPrefixRows = 256
+    // Retain the existing list-bound name for its unchanged regression corpus.
+    static let maximumListLines = maximumPrefixRows
     let source: String
     let range: NSRange
     let replacement: String
@@ -54,6 +64,8 @@ struct MarkdownInsertionPlan: Sendable {
         case .link: placeholder = "link text"
         case .imageReference: placeholder = "alt text"
         case .bulletedList, .numberedList, .taskList: placeholder = "item"
+        case .heading1, .heading2, .heading3: placeholder = "heading"
+        case .blockquote: placeholder = "text"
         case .table: placeholder = ""
         }
         let body = selection.length == 0 ? placeholder : selected
@@ -98,9 +110,9 @@ struct MarkdownInsertionPlan: Sendable {
             opening = (atLineStart ? "" : eol) + fence + eol
             let bodyHasEnding = body.utf8.last == 13 || body.utf8.last == 10
             closing = (bodyHasEnding ? "" : eol) + fence + (needsSuffixEnding ? eol : "")
-        case .bulletedList, .numberedList, .taskList:
-            return makeList(command: command, source: source, selection: selection, selected: selected,
-                            sourceBytes: sourceBytes, selectedBytes: selectedBytes)
+        case .bulletedList, .numberedList, .taskList, .heading1, .heading2, .heading3, .blockquote:
+            return makeRowPrefix(command: command, placeholder: placeholder, source: source, selection: selection, selected: selected,
+                                 sourceBytes: sourceBytes, selectedBytes: selectedBytes)
         case .table:
             return MarkdownTableInsertion.make(source: source, selection: selection)
         }
@@ -148,8 +160,8 @@ struct MarkdownInsertionPlan: Sendable {
 
     /// Whole physical rows are prefixed literally. Existing Markdown markers
     /// have no special meaning, and surrounding Markdown is not isolated.
-    private static func makeList(command: MarkdownInsertionCommand, source: String, selection: NSRange,
-                                 selected: String, sourceBytes: Int, selectedBytes: Int) -> Self? {
+    private static func makeRowPrefix(command: MarkdownInsertionCommand, placeholder: String, source: String, selection: NSRange,
+                                      selected: String, sourceBytes: Int, selectedBytes: Int) -> Self? {
         let text = source as NSString
         let hasLeadingBOM = text.length > 0 && text.character(at: 0) == 0xFEFF
         let previous: UInt16? = selection.location > 0 ? text.character(at: selection.location - 1) : nil
@@ -170,9 +182,9 @@ struct MarkdownInsertionPlan: Sendable {
             }
             let row = text.substring(with: NSRange(location: selection.location, length: end - selection.location))
             let blank = row.unicodeScalars.allSatisfy { CharacterSet.whitespacesAndNewlines.contains($0) }
-            let marker = listMarker(command, number: 1)
-            replacement = marker + (blank ? "item" : "")
-            selectionAfter = NSRange(location: selection.location + marker.utf16.count, length: blank ? 4 : 0)
+            let marker = rowMarker(command, number: 1)
+            replacement = marker + (blank ? placeholder : "")
+            selectionAfter = NSRange(location: selection.location + marker.utf16.count, length: blank ? placeholder.utf16.count : 0)
         } else {
             let end = selection.location + selection.length
             let next: UInt16? = end < text.length ? text.character(at: end) : nil
@@ -180,14 +192,17 @@ struct MarkdownInsertionPlan: Sendable {
             guard end == text.length || next == 13 || next == 10 || last == 13 || last == 10 else { return nil }
             let selectedBOM = selection.location == 0 && hasLeadingBOM
             let body = selectedBOM ? (selected as NSString).substring(from: 1) : selected
-            guard let rows = physicalListRows(in: body) else { return nil }
+            guard let rows = physicalPrefixRows(in: body) else { return nil }
             var transformed = selectedBOM ? "\u{FEFF}" : ""
             var number = 0
             for row in rows {
-                if !row.body.unicodeScalars.allSatisfy({ CharacterSet.whitespacesAndNewlines.contains($0) }) {
+                let nonblank = !row.body.unicodeScalars.allSatisfy({ CharacterSet.whitespacesAndNewlines.contains($0) })
+                if nonblank {
                     number += 1
-                    transformed.append(listMarker(command, number: number))
                 }
+                // Quotes prefix blank selected rows too, keeping the selected
+                // quote continuous. An entirely blank batch is still refused.
+                if nonblank || command == .blockquote { transformed.append(rowMarker(command, number: number)) }
                 transformed.append(row.body)
                 transformed.append(row.ending)
             }
@@ -203,16 +218,20 @@ struct MarkdownInsertionPlan: Sendable {
         return Self(source: source, range: selection, replacement: replacement, selectionAfter: selectionAfter)
     }
 
-    private static func listMarker(_ command: MarkdownInsertionCommand, number: Int) -> String {
+    private static func rowMarker(_ command: MarkdownInsertionCommand, number: Int) -> String {
         switch command {
         case .bulletedList: "- "
         case .numberedList: "\(number). "
         case .taskList: "- [ ] "
+        case .heading1: "# "
+        case .heading2: "## "
+        case .heading3: "### "
+        case .blockquote: "> "
         default: ""
         }
     }
 
-    private static func physicalListRows(in source: String) -> [(body: String, ending: String)]? {
+    private static func physicalPrefixRows(in source: String) -> [(body: String, ending: String)]? {
         let scalars = source.unicodeScalars
         var start = scalars.startIndex
         var cursor = start
@@ -223,7 +242,7 @@ struct MarkdownInsertionPlan: Sendable {
                 let isCR = scalars[cursor] == "\r"
                 scalars.formIndex(after: &cursor)
                 if isCR && cursor < scalars.endIndex && scalars[cursor] == "\n" { scalars.formIndex(after: &cursor) }
-                guard rows.count < maximumListLines else { return nil }
+                guard rows.count < maximumPrefixRows else { return nil }
                 rows.append((String(scalars[start..<boundary]), String(scalars[boundary..<cursor])))
                 start = cursor
             } else {
@@ -231,9 +250,9 @@ struct MarkdownInsertionPlan: Sendable {
             }
         }
         // A trailing physical ending already belongs to the preceding row;
-        // do not invent an additional empty item at the end of the selection.
+        // do not invent an additional empty row at the end of the selection.
         if start < scalars.endIndex {
-            guard rows.count < maximumListLines else { return nil }
+            guard rows.count < maximumPrefixRows else { return nil }
             rows.append((String(scalars[start..<scalars.endIndex]), ""))
         }
         return rows
