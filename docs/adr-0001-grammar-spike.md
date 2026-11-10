@@ -2,6 +2,14 @@
 
 Status: MRK-8 completed as reviewed research. Production parser/resolver/export acceptance remains MRK-13–17; MRK-12 integration is gated by MRK-9. References: MRK-R1–R5, Disegno MRK v2. Dated evidence below records the research progression, not current ticket status.
 
+## Initial BOM coordinate correction — November 10, 2026
+
+Parallel review found that the pinned micromark preprocessor strips exactly one initial U+FEFF before assigning AST positions. Passing these coordinates through unchanged made closed-fence ranges one UTF-16 unit short, lost unclosed-fence EOF ownership and missed a first-line file card. For `\uFEFF😀`, the old text end offset even split the original surrogate pair. Scanner-only BOM tests had not covered the reference AST.
+
+The reference adapter now rebases every descendant start/end and the root end by one UTF-16 unit, increments columns only on the first line, and preserves root origin zero. It maps positions immediately after parsing, before ownership masks and all format-profile returns. Parsing still consumes the original string, so exactly one BOM is ignored semantically; a second remains content. This corrects source coordinates without changing format 0.1 or enabling file resolution/execution.
+
+Three new regression groups first failed, then passed for BOM-only/emoji/doubled-BOM input, `.mrk`/`.md`/unsupported profiles, inline/GFM/code positions, file-card extraction, inert nested ownership and closed/unclosed fence projection across LF/CRLF/CR. All 37 targeted and 84 full-suite Node test groups pass. Evidence: `spikes/macos-editor/build/bom-source-before-20261110.log`, `bom-source-targeted-20261110.log`, `bom-source-suite-20261110.log`. Independent review found no blocking issue. No native parser, editor bundle, browser or app was rebuilt; their prior evidence is historical. Disk remained 19 GiB, below the 20 GiB build threshold. All existing security/accessibility/ingestion/device/release gates stay open.
+
 ## Decision proposal
 
 Target CommonMark 0.31.2 plus the GFM 0.29-gfm extension definitions (tables, strikethrough, task lists and autolinks). Pin parser implementation versions in a lockfile before claiming baseline conformance. `.md` never opts into extension interpretation; `.mrk` does. This lexical prototype does not render Markdown and is not proof of baseline conformance.

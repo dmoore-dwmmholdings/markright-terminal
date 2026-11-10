@@ -36,3 +36,16 @@ test('container ownership distinguishes an EOF list fence from a completed quote
  assert.equal(reveal(quote,quote.length).start,quote.length);
  assert.equal(reveal(list,list.length).start,list.indexOf('```'));
 });
+test('BOM-prefixed fences retain complete ranges and unclosed EOF ownership',()=>{
+ for(const newline of ['\n','\r\n','\r'])for(const fence of ['```js','~~~js']){
+  const unclosed='\uFEFF'+fence+newline+'😀'+newline;
+  assert.equal(reveal(unclosed,unclosed.length).start,1);
+  assert.equal(reveal(unclosed,unclosed.length).end,unclosed.length);
+  const closed=unclosed+fence.slice(0,3);
+  const range=reveal(closed,closed.indexOf('😀'));
+  assert.equal(range.start,1);assert.equal(range.end,closed.length);
+  assert.equal(closed.slice(range.start,range.end),closed.slice(1));
+  const following=closed+newline;
+  assert.equal(reveal(following,following.length).start,following.length);
+ }
+});

@@ -2,6 +2,39 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {analyze} from '../src/document.mjs';
 const descendants=n=>[n,...(n.children??[]).flatMap(descendants)];
+test('reference AST maps an initial BOM into exact source offsets and physical columns',()=>{
+ for(const newline of ['\n','\r\n','\r'])for(const body of ['', '😀', '# Heading'+newline+newline+'A **bold** [link](./a).'+newline+newline+'|a|b|'+newline+'|-|-|'+newline+'|x|y|'+newline+newline+'```js'+newline+'x'+newline+'```'+newline]){
+  const source='\uFEFF'+body;
+  for(const extension of ['.mrk','.md']){
+   const baseline=descendants(analyze(body,{extension}).markdown),result=analyze(source,{extension}),mapped=descendants(result.markdown);
+   assert.equal(result.source,source);assert.equal(mapped.length,baseline.length);
+   for(let i=0;i<mapped.length;i++){
+    assert.equal(mapped[i].type,baseline[i].type);
+    for(const side of ['start','end']){
+     const expected=i===0&&side==='start'?{line:1,column:1,offset:0}:{...baseline[i].position[side],offset:baseline[i].position[side].offset+1,column:baseline[i].position[side].column+(baseline[i].position[side].line===1?1:0)};
+     assert.deepEqual(mapped[i].position[side],expected,`${extension} ${mapped[i].type}.${side}`);
+    }
+   }
+  }
+ }
+ const doubled=analyze('\uFEFF\uFEFFx');
+ assert.equal(doubled.markdown.children[0].children[0].value,'\uFEFFx');
+ assert.equal(doubled.markdown.children[0].position.start.offset,1);
+ assert.equal(doubled.markdown.position.end.offset,3);
+ const unsupported=analyze('\uFEFF<!-- markright: 9.9 -->\n😀');
+ assert.deepEqual(unsupported.nodes,[]);assert.equal(unsupported.markdown.position.end.offset,unsupported.source.length);
+});
+test('BOM-aware AST ownership retains file cards and keeps nested markup inert',()=>{
+ for(const newline of ['\n','\r\n','\r']){
+  const source='\uFEFF:file[A]{src="x"}'+newline+newline+':file[B]{src="y"}';
+  const result=analyze(source);
+  assert.deepEqual(result.nodes.map(n=>[n.label,n.src,n.line]),[['A','x',1],['B','y',3]]);
+  for(const node of result.nodes)assert.equal(source.slice(node.start,node.end),`:file[${node.label}]{src="${node.src}"}`);
+  for(const body of ['`:file[A]{src="x"}`','[:file[A]{src="x"}](./link)','<div>'+newline+'::include{src="x"}'+newline+'</div>','```'+newline+':file[A]{src="x"}'+newline+'::include{src="x"}'+newline+'```']){
+   assert.deepEqual(analyze('\uFEFF'+body).nodes,[],body);
+  }
+ }
+});
 test('real reference AST covers baseline inline/block Markdown and GFM',()=>{
  const text='# Heading\n\n*em* **strong** ~~gone~~ [link](a) ![alt](b) <https://example.com>\n\n> quote\n\n1. one\n2. two\n\n- [x] checked\n\n|x|y|\n|-|-|\n|1|2|\n\n---\n\n```js\nconst a=1\n```';
  const types=new Set(descendants(analyze(text).markdown).map(x=>x.type));

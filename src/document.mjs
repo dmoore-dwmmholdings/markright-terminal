@@ -9,6 +9,21 @@ export function analyze(source, options = {}) {
   // Apply quota/type validation before parser allocation.
   scan(source, {...options, extension:'.md'});
   const markdown = parser.parse(source);
+  // micromark strips exactly one initial BOM before assigning positions. Keep
+  // its parse semantics, but map every span back to the exact source snapshot
+  // before ownership masks, extension extraction or projection use the AST.
+  if(source.startsWith('\uFEFF')){
+    const rebase=point=>({...point,offset:point.offset+1,column:point.column+(point.line===1?1:0)});
+    const pending=[markdown];
+    while(pending.length){
+      const node=pending.pop();
+      if(node.position)node.position={
+        start:node===markdown?{...node.position.start}:rebase(node.position.start),
+        end:rebase(node.position.end)
+      };
+      for(const child of node.children??[])pending.push(child);
+    }
+  }
   const profile=formatProfile(source,options.extension);
   if(!profile.enabled)return {source,markdown,nodes:[],diagnostics:profile.diagnostics,formatVersion:profile.version};
   const blocked = [];

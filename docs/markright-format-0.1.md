@@ -50,6 +50,8 @@ A major/minor grammar change requires a new profile and conformance fixtures. Ho
 
 ## Evidence and downstream map
 
+The reference adapter's initial-BOM coordinate correction is recorded in ADR0001/0002 (November 10, 2026). The pinned parser ignores one BOM semantically; its returned spans are now explicitly mapped back into the exact source, including first-line columns. This is an adapter correction, not a format/profile change or production parser acceptance.
+
 - `fixtures/commonmark-0.31.2.json`: all 652 baseline examples; attribution/hash in NOTICE.
 - `fixtures/gfm-0.29.json`: all 24 extension examples, including explicitly classified parser differences.
 - `fixtures/calculator.mrk`: representative inert data/script/snippet/include source.

@@ -2,6 +2,12 @@
 
 Status: MRK-9 in progress, not UI acceptance.
 
+## BOM-prefixed reference projection correction — November 10, 2026
+
+The reference AST's coordinates previously ignored the first source BOM. This truncated closed fences and returned an empty range for an unclosed fence's EOF caret; even an emoji's mapped end could split a surrogate pair. `analyze` now maps the parser's BOM-relative positions into exact original-source UTF-16 coordinates before projection/ownership/extraction. The root retains origin zero; first-line columns and all end offsets include the BOM. Only one BOM is semantically ignored, matching the pinned dependency.
+
+New document/projection regressions first failed and now pass across LF/CRLF/CR, including first-line file cards and inert nested constructs. All 37 targeted and 84 full-suite Node test groups pass; evidence and implementation detail are in ADR0001. Independent review found no blocker. A separate in-memory adapter review passed 16,000 raw edits with full undo/redo histories and 328,786 source/editor round trips without a new defect; these are additional review probes, not committed test groups or security acceptance. No desktop/native bundle, browser, simulator or app build ran at 19 GiB free. Existing builds/previews and all MRK-9/12, network-isolation, VoiceOver, ingestion, physical/device/distribution/release gates remain unchanged.
+
 ## Desktop whole-document source mode — November 9, 2026
 
 The desktop research editor now has an explicit Source mode control. A CodeMirror compartment removes/reinstalls only preview decorations without rebuilding state, preserving raw-source separator metadata, reverse selection and edit history. Keyboard activation returns focus to the editor. This is an editing mode; a read-only reading mode and complete renderer remain absent. Parsing continues, so no performance fallback or latency claim follows.
