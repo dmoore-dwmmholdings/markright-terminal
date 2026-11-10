@@ -137,6 +137,7 @@ struct NativeSourceEditor: UIViewRepresentable {
 }
 struct EditorScreen: View {
     @State private var model: EditorModel
+    @State private var showsSourcePreview = false
     private let title: String
     private let onEdit: (() -> Void)?
     init(model: EditorModel? = nil, title: String = "Markright spike", onEdit: (() -> Void)? = nil) {
@@ -175,7 +176,7 @@ struct EditorScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                if model.retainsReadingRows {
+                if model.sourceMode || model.retainsReadingRows {
                     VStack(alignment: .leading, spacing: 12) { documentRows }.padding()
                 } else {
                     LazyVStack(alignment: .leading, spacing: 12) { documentRows }.padding()
@@ -198,10 +199,18 @@ struct EditorScreen: View {
     @ViewBuilder private var documentRows: some View {
         Text("Interaction prototype. Not a complete Markdown editor.").font(.caption).foregroundStyle(.primary)
         if model.sourceMode {
+            Toggle("Live preview", isOn: $showsSourcePreview)
+                .font(.body).frame(minHeight: 44)
+                .accessibilityIdentifier("live-preview-toggle")
+                .disabled(model.composing)
             let generation = model.editingGeneration
             NativeSourceEditor(value: model.documentSource, id: -1, selection: model.documentSelection, wholeDocument: true) { value, composing, selection in
                 model.updateDocumentSource(value, composing: composing, generation: generation, selection: selection)
             }.id(generation).frame(height: 500)
+            if showsSourcePreview {
+                SourcePreviewPanel(source: model.documentSource, selection: model.documentSelection, composing: model.composing)
+                    .frame(height: 240)
+            }
         } else {
             ForEach(model.blocks) { block in
                 if model.readingMode {

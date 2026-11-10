@@ -1,0 +1,29 @@
+# MRK-46 native companion-preview candidate
+
+This is an **unmerged candidate**, with required native workflow validation still open. It adds optional partial preview to the macOS collection workspace and iOS whole-document Source mode. It relates to pinned MRK v2 R8/R15 and does not accept complete inline editing, Markdown rendering, accessibility or production clients.
+
+## Intended workflow and boundaries
+
+Enable **Live preview** to view current in-memory text beside the Mac source editor or below the iOS source field. Inactive supported rows receive Foundation inline styling; active units and recognized backtick/table units remain literal source. Mac document rows also identify the currently open file. The source editor remains the authority: preview has no source binding, edit callback, navigation action, selectable text, Link/Image view, file access, URL resolution, script execution or network capability.
+
+The projection reuses the existing fixture-level EditorModel grouping rather than a complete Markdown parser. It retains each unit's original source/separator and global UTF-16 range. Carets belong to the unit owning that position, including left-owned separators and the final EOF unit; nonempty selections use half-open intersections. Strict range checks reject surrogate/CRLF interior endpoints without changing source or selection.
+
+Processing accepts at most 64 KiB of source and displays at most 256 fixture units. Inline parsing is limited to 4,096 UTF-16 units per row. Oversized, invalid-selection and composition states show an explicit unavailable/paused message with no partial truncation. Active, atomic, long and marker-bearing HTML/image/directive rows remain literal. Row-level unsupported markup is not a full context parser. An unrecognized tilde/indented-backtick fence-like unit keeps the entire report literal and explains the fallback, avoiding styled text inside a possible code body. Attributed link targets are cleared on all paths.
+
+Mac source remains the unconditional first child of a stable split container, using the existing session/generation identity and callback. iOS source mode uses a retained VStack, with its existing fixed-height source editor and a separate fixed-height preview. This avoids relying on lazy-row identity to retain the editor when scrolled out of view. These are implementation guarantees to verify; no iOS runtime retention or cross-mode undo acceptance is claimed.
+
+## Evidence and open validation
+
+The shared Mac corpus passes **156 tests**, zero failures, with Swift warnings as errors: `spikes/macos-editor/build/MRK46-shared-core-macos-20261110.log`. Twelve new groups cover exact BOM/NFD/emoji/mixed-ending reconstruction, source-unit/atomic range ownership, EOF/cross-unit selections, invalid ranges, byte/unit/inline thresholds, composition short-circuiting, literal fallbacks, removed link targets and unchanged editor/session/save state. Review caught and corrected the optional status-text compile mismatch, unsupported-fence context fallback and iOS lazy-source mounting gap before the shared run.
+
+Two invisible native attempts compiled the Mac candidate with Swift 6 warnings as errors and passed all **16 prior groups**, then failed the new preview workflow's first observation predicate: rendered inactive text plus the open-document accessibility marker were not established within six seconds. The checks for source identity/focus/undo, composition, conflict recovery and document switching occur after that predicate and **did not run**. Logs remain preserved as `spikes/macos-editor/build/MRK46-native-appkit-20261110.log` and `MRK46-native-preview-diagnostic-20261110.log`. No 17-group pass is claimed.
+
+The diagnostic confirms `showsSourcePreview=true`, a 700×520 offscreen root and a 168.5×368 source field. Its first 90 accessibility entries were mostly raw nodes with no semantic metadata. This does not establish whether the panel, styling, marker or observation mechanism is faulty. Read-only review found a probe traversal issue: LIFO ordering visits raw subviews before semantic AX children, and duplicates consumed the node budget. The prepared probe now visits semantic children first, counts unique nodes, reports meaningful nodes/separate predicates and sizes its private window to 1080×760 before taking a baseline. All intended feature assertions remain intact. **These probe changes have not been compiled or rerun.**
+
+A 15-minute validation slot was then reserved for another worker. The current diagnostic process ended and read-only process inventory confirmed no Markright build/probe remained; no new heavy job was started after the hold. Lightweight code review, documentation and checkpoint work continued. Full Mac app/iOS build-for-testing and the corrected native preview workflow remain pending the released slot. No iOS case ran.
+
+## Resume without changing gates
+
+After the slot is released and capacity is checked, run the existing native runner with the corrected observation path. Inspect the separate preview-text/open-marker predicates and actual pane dimensions before changing product code. If semantic content is still unavailable, investigate the private hosting lifecycle without weakening the source/caret/undo/recovery assertions. Only after native behavior is verified should bounded Mac/iOS builds and final review qualify a merge to main.
+
+The existing Link/TextKit diagnostic, simulator boot error 22 and original iOS recovery-input failure remain unresolved. No new simulator/debugger attempt or unsupported repair was made for this slice. Actual OS menus/keyboard/IME/undo, VoiceOver, physical devices, full renderer/inline-editor behavior, ingestion/isolation/provider and release acceptance remain open. Existing Debug app, browser preview, held documentation drafts and prior evidence remain preserved.

@@ -1,5 +1,9 @@
 # macOS native collections and system-WKWebView research
 
+## Unmerged companion-preview candidate
+
+MRK-46 adds opt-in partial inline preview and a current-document marker. The candidate passes 156 shared tests and compiles in the invisible native runner, but its new preview workflow times out at the initial rendered-content/open-marker observation. Later source identity/focus/undo/recovery/document-switch checks have not run. AX-first traversal and explicit private-window sizing are prepared but uncompiled/unrun during a reserved validation slot; full app builds remain pending. This is a candidate branch, with no main merge or production acceptance. See [evidence and resume steps](../../docs/native-companion-preview-validation.md).
+
 MRK-39 adds a separate native SwiftUI/AppKit collection/source/recovery workspace through **Open collections**. It shares the iOS storage/session model and supports app-owned create/open/autosave, cross-collection Save As, inert recovery preview and separate-copy restore with close/quit guards. It does not grant WebKit access to stored documents. See [the workflow, verification and limits](../../docs/native-macos-collections-validation.md). External selected folders, full rendering and production desktop architecture remain open. The existing visible Debug app has not been rebuilt or restarted; verification uses the separate Verification product.
 
 Standalone SwiftUI window around the existing synthetic desktop CodeMirror fixture. This is a macOS shell experiment, not a selected production architecture, Tauri integration, complete Markdown application or native iOS implementation. MRK-9 VoiceOver observation and MRK-12 integrated review remain open.

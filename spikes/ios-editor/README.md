@@ -1,5 +1,9 @@
 # Native collection and editing validation
 
+## Unmerged companion-preview candidate
+
+MRK-46 adds an optional 240-point partial preview below the existing whole-document Source field, with retained source-mode rows. Active/unsupported units stay literal, inactive supported inline text is styled and attributed link targets are removed. Shared projection tests pass in the 156-test Mac corpus. This iOS UI change has **not been built or run**; native input/undo/accessibility acceptance remains open. The Mac workflow observation also remains unresolved. See [candidate status and resume steps](../../docs/native-companion-preview-validation.md).
+
 Native SwiftUI collection browsing and native UITextView source/preview/reading editing. The app-owned collection validation is tracked by MRK-36, bounded recovery by MRK-37 and Save As by MRK-38; editor interaction research remains MRK-9. Automated runs use synthetic documents on the dedicated simulator, with no sync, script execution, signing account or physical devices.
 
 The default launch now creates and reopens app-owned collection folders and UTF-8 documents with autosave. See [the storage contract and limitations](../../docs/native-collections-validation.md). External folders, full identity, crash-before-checkpoint recovery and production MRK-18 acceptance remain gated. Use `--editor-fixture` for the historical sample editor, including with `--static-calculator` or `--large-document`.

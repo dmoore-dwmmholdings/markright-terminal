@@ -6,6 +6,7 @@ import SwiftUI
 @MainActor @Observable final class MacCollectionWorkspaceModel {
     let store: CollectionStore
     let sourceCopyExport = SourceCopyExportModel()
+    var showsSourcePreview = false
     private(set) var collections: [String] = []
     private(set) var selectedCollection: String?
     private(set) var documents: [String] = []
@@ -461,7 +462,7 @@ struct MacCollectionWorkspace: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Native collection and recovery prototype").font(.headline)
-                Text("App-owned files on this Mac · No sync. Plain source editing only; formatted preview is unavailable. Linked assets are not copied.")
+                Text("App-owned files on this Mac · No sync. Optional partial preview supports inline formatting; tables and code fences remain source. Linked assets are not copied.")
                     .font(.body).fixedSize(horizontal: false, vertical: true)
                 Text(model.status).font(.body).accessibilityIdentifier("mac-document-status")
                 if let message = model.operationMessage { Text(message).font(.body).textSelection(.enabled) }
@@ -489,6 +490,10 @@ struct MacCollectionWorkspace: View {
                 .accessibilityIdentifier("export-source-copy")
                 .disabled(model.isBusy || model.hasNamingDialog || model.recoveryCloseRequested || model.sourceCopyExport.isPending ||
                           model.session == nil || model.session?.model.composing == true || model.session?.isChangingDestination == true)
+            Toggle("Live preview", isOn: $model.showsSourcePreview)
+                .accessibilityIdentifier("live-preview-toggle")
+                .disabled(model.session == nil || model.isBusy || model.hasNamingDialog || model.recoveryCloseRequested ||
+                          model.sourceCopyExport.isPending || model.session?.model.composing == true)
             Button("Refresh") { Task { await model.refresh() } }.disabled(model.isBusy || model.sourceCopyExport.isPending)
         }
         .background {
@@ -532,8 +537,14 @@ struct MacCollectionWorkspace: View {
                     Text("Documents in \(collection)").font(.headline)
                     if model.documents.isEmpty { Text("No listed documents.") }
                     ForEach(model.documents, id: \.self) { name in
-                        Button(name) { Task { await model.openDocument(name) } }
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        let isOpen = model.session?.document.collection == collection && model.session?.document.name == name
+                        Button { Task { await model.openDocument(name) } } label: {
+                            HStack {
+                                Text(verbatim: name)
+                                if isOpen { Image(systemName: "checkmark").accessibilityHidden(true) }
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .accessibilityValue(isOpen ? "Open" : "")
                     }
                     CollectionSearchPanel(store: model.store, collection: collection) { name in
                         let scope = collection
@@ -573,12 +584,19 @@ struct MacCollectionWorkspace: View {
                 }.padding([.horizontal, .top])
                 // Captured generation rejects callbacks from a departing editor.
                 let generation = session.model.editingGeneration
-                MacSourceEditor(value: session.model.documentSource, selection: session.model.documentSelection,
-                                isEditable: !model.isBusy && !model.hasNamingDialog) { value, composing, selection in
-                    guard model.session?.id == session.id else { return }
-                    session.model.updateDocumentSource(value, composing: composing, generation: generation, selection: selection)
-                    session.scheduleSave()
-                }.id("\(session.id)-\(generation)")
+                HSplitView {
+                    MacSourceEditor(value: session.model.documentSource, selection: session.model.documentSelection,
+                                    isEditable: !model.isBusy && !model.hasNamingDialog) { value, composing, selection in
+                        guard model.session?.id == session.id else { return }
+                        session.model.updateDocumentSource(value, composing: composing, generation: generation, selection: selection)
+                        session.scheduleSave()
+                    }.id("\(session.id)-\(generation)").frame(minWidth: 160)
+                    if model.showsSourcePreview {
+                        SourcePreviewPanel(source: session.model.documentSource, selection: session.model.documentSelection,
+                                           composing: session.model.composing)
+                            .frame(minWidth: 180)
+                    }
+                }
             }
         } else {
             VStack(alignment: .leading, spacing: 12) {

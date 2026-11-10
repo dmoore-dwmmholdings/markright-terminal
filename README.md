@@ -6,6 +6,8 @@ The native iOS prototype supports app-owned collections, document editing/autosa
 
 The publication status is recorded in [docs/github-destination.md](docs/github-destination.md). [The publication review](docs/publication-review.md) explains history privacy cleanup and maps earlier research checkpoint IDs to public commits.
 
+An **unmerged native companion-preview candidate** adds opt-in partial inline preview and an open-document marker. It passes 156 shared tests, but the new native workflow's initial rendered-content check timed out; later source/focus/undo/recovery checks and full app builds remain pending. Prepared probe changes have not been rerun while another validation slot is reserved. [Candidate evidence and resume steps](docs/native-companion-preview-validation.md) distinguish implemented behavior from unverified acceptance.
+
 ## Reproduce
 
 - Node 22+: `npm ci --ignore-scripts`, then `npm test`.
