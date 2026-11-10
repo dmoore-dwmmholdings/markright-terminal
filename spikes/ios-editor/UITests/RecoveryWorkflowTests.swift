@@ -1,6 +1,17 @@
 import XCTest
 
 @MainActor final class RecoveryWorkflowTests: XCTestCase {
+    private enum PreconditionFailure: Error { case failed(String) }
+    private let typedSource = "Recovery -- \"notes\" and café\n"
+
+    private func require(_ condition: Bool, _ message: String,
+                         file: StaticString = #filePath, line: UInt = #line) throws {
+        guard condition else {
+            XCTFail(message, file: file, line: line)
+            throw PreconditionFailure.failed(message)
+        }
+    }
+
     private func launch(root: String, fail: Bool = false, dark: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--library-test-root", root] + (fail ? ["--fail-library-save"] : []) + (dark ? ["--dark-mode"] : [])
@@ -14,19 +25,70 @@ import XCTest
         XCTAssertTrue(field.waitForExistence(timeout: 5)); field.tap(); field.typeText(name)
         app.alerts.buttons["Create"].tap()
     }
-    private func failedEdit(_ app: XCUIApplication) -> String {
+    private func prepareFailedEdit(_ app: XCUIApplication) throws {
         create(app, button: "new-collection", name: "Journal")
-        XCTAssertTrue(app.buttons["new-document"].waitForExistence(timeout: 5))
+        try require(app.buttons["new-document"].waitForExistence(timeout: 5), "New document action is missing")
         create(app, button: "new-document", name: "Day one")
-        XCTAssertTrue(app.buttons["show-document-source"].waitForExistence(timeout: 5)); app.buttons["show-document-source"].tap()
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
-        app.typeText("Recovery -- \"notes\" and café\n")
-        let source = app.textViews["document-source-editor"].value as? String ?? "missing"
-        XCTAssertTrue(source.contains("Recovery -- \"notes\" and café"))
-        expectation(for: NSPredicate(format: "label BEGINSWITH %@", "Could not save."), evaluatedWith: app.staticTexts["document-save-status"])
-        expectation(for: NSPredicate(format: "label == %@", "Recovery copy saved on this device"), evaluatedWith: app.staticTexts["document-recovery-status"])
-        waitForExpectations(timeout: 10)
-        XCTAssertTrue(app.buttons["close-with-recovery"].waitForExistence(timeout: 5))
+        try require(app.buttons["show-document-source"].waitForExistence(timeout: 5), "Source action is missing")
+        app.buttons["show-document-source"].tap()
+        try require(app.textViews["document-source-editor"].waitForExistence(timeout: 5), "Source editor is missing")
+        try require(app.keyboards.firstMatch.waitForExistence(timeout: 5), "Source keyboard is missing")
+    }
+
+    private func attachInputDiagnostic(_ app: XCUIApplication, phase: String) {
+        let editor = app.textViews["document-source-editor"]
+        let exists = editor.exists
+        let value = exists ? editor.value as? String : nil
+        let saveStatus = app.staticTexts["document-save-status"]
+        let recoveryStatus = app.staticTexts["document-recovery-status"]
+        let attachment = XCTAttachment(string: """
+        phase: \(phase)
+        editor exists: \(exists)
+        editor hittable: \(exists && editor.isHittable)
+        editor value: \(String(reflecting: value))
+        editor UTF-8: \(String(describing: value.map { Array($0.utf8) }))
+        keyboards: \(app.keyboards.count)
+        save status: \(saveStatus.exists ? saveStatus.label : "missing")
+        recovery status: \(recoveryStatus.exists ? recoveryStatus.label : "missing")
+        recovery close exists: \(app.buttons["close-with-recovery"].exists)
+        """)
+        attachment.name = "Recovery input \(phase)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func waitForExactSource(_ app: XCUIApplication, expected: String, phase: String) throws -> String {
+        attachInputDiagnostic(app, phase: "\(phase) immediately after typing")
+        let editor = app.textViews["document-source-editor"]
+        let complete = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", expected), object: editor)
+        let result = XCTWaiter.wait(for: [complete], timeout: 5)
+        attachInputDiagnostic(app, phase: "\(phase) after exact-source wait")
+        try require(result == .completed, "The complete typed source was not visible within 5 seconds")
+        let source = editor.value as? String
+        try require(source.map { $0.utf8.elementsEqual(expected.utf8) } == true,
+                    "The editor source does not exactly match the typed UTF-8")
+        return source!
+    }
+
+    private func waitForFailedCheckpoint(_ app: XCUIApplication, expected: String) throws {
+        let failure = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label BEGINSWITH %@", "Could not save."),
+                                                object: app.staticTexts["document-save-status"])
+        let checkpoint = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "Recovery copy saved on this device"),
+                                                   object: app.staticTexts["document-recovery-status"])
+        let result = XCTWaiter.wait(for: [failure, checkpoint], timeout: 10)
+        attachInputDiagnostic(app, phase: "after checkpoint acknowledgement wait")
+        try require(result == .completed, "Save failure and current recovery checkpoint were not acknowledged within 10 seconds")
+        try require(app.buttons["close-with-recovery"].waitForExistence(timeout: 5), "Current recovery close is unavailable")
+        let source = app.textViews["document-source-editor"].value as? String
+        try require(source.map { $0.utf8.elementsEqual(expected.utf8) } == true,
+                    "Source changed before the current checkpoint was acknowledged")
+    }
+
+    private func failedEdit(_ app: XCUIApplication) throws -> String {
+        try prepareFailedEdit(app)
+        app.typeText(typedSource)
+        let source = try waitForExactSource(app, expected: typedSource, phase: "complete input")
+        try waitForFailedCheckpoint(app, expected: source)
         return source
     }
     private func openSource(_ app: XCUIApplication, filename: String) -> XCUIElement {
@@ -37,10 +99,10 @@ import XCTest
         XCTAssertTrue(source.waitForExistence(timeout: 5))
         return source
     }
-    func testTerminationAfterCheckpointRestoresNewCopyWithoutChangingOriginal() {
+    func testTerminationAfterCheckpointRestoresNewCopyWithoutChangingOriginal() throws {
         let root = UUID().uuidString
         var app = launch(root: root, fail: true)
-        let source = failedEdit(app)
+        let source = try failedEdit(app)
         // Terminate only after the durable checkpoint acknowledgement; this does
         // not simulate a power failure or a kill during an unacknowledged write.
         app.terminate()
@@ -69,9 +131,25 @@ import XCTest
         app.buttons["collection-Journal"].tap()
         XCTAssertTrue(app.buttons["document-Recovered Day one.mrk"].waitForExistence(timeout: 5))
     }
+    func testTypingContinuesWithoutRefocusAfterSaveFailureHeaderAppears() throws {
+        let app = launch(root: UUID().uuidString, fail: true)
+        try prepareFailedEdit(app)
+        app.typeText("Re")
+        _ = try waitForExactSource(app, expected: "Re", phase: "prefix input")
+        try waitForFailedCheckpoint(app, expected: "Re")
+        let editor = app.textViews["document-source-editor"]
+        try require(editor.exists && app.keyboards.firstMatch.exists,
+                    "Save-failure header removed the source editor or keyboard")
+        // No tap or refocus: the status/header transition must preserve input.
+        app.typeText("covery -- \"notes\" and café\n")
+        let source = try waitForExactSource(app, expected: typedSource, phase: "suffix input")
+        try waitForFailedCheckpoint(app, expected: source)
+        try require(editor.exists && app.keyboards.firstMatch.exists,
+                    "Continued typing lost the source editor or keyboard")
+    }
     private func auditRecovery(dark: Bool) throws {
         let app = launch(root: UUID().uuidString, fail: true, dark: dark)
-        let source = failedEdit(app)
+        let source = try failedEdit(app)
         app.buttons["close-with-recovery"].tap()
         let recovery = app.buttons["recovery-Day one.mrk"]
         XCTAssertTrue(recovery.waitForExistence(timeout: 5))
