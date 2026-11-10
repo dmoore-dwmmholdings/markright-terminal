@@ -17,6 +17,12 @@ MRK-39 passes **58 shared storage/session tests +5 focused AppKit groups**, with
 
 The bundled fixture now includes read-only Reading mode. All 12 scoped offscreen groups pass in `build/reading-mode-native-20261110.log`, including immediate preview refresh, delivered-paste refusal and exact source/reverse selection retention. Separate browser checks pass 33/skip 1; all 87 Node groups pass. `build/reading-mode-host-20261110.log` records the unsigned warnings-as-errors build into the unused separate Verification product. The visible Debug app/tabs were preserved. The first attempt's below 20 GiB resource stop is retained; after cleanup about 47 GiB allowed sequential verification. These are scoped UI-policy checks, not OS keyboard/clipboard/VoiceOver or network-isolation acceptance. See desktop README/ADR0002 for limits.
 
+## Native saved-source search
+
+MRK-40 adds a collapsed **Search saved documents** panel in the selected collection. It searches saved source only, shows literal bounded previews, reports partial scans/errors and opens results through the existing guarded workflow. Query input uses its own plain native text view, with no autofocus, persisted query history or programmatic clipboard access. Active source, caret, focus and undo survive search and save-error header updates in authored offscreen checks.
+
+**90 shared Mac tests and 8 AppKit groups pass**, including retired-query callback and real panel teardown regressions. The final unsigned Verification app builds with Swift warnings as errors. The existing visible Debug product and bundled WebKit fixture remain unchanged. See [the bounded search contract and evidence](../../docs/native-collection-search-validation.md); this is not indexed search, complete authoring, OS input/VoiceOver, external-provider or release acceptance.
+
 ## Build without launching
 
 From the repository root, using the working Node 24 installation described in the root README:

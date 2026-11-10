@@ -30,8 +30,11 @@ struct CollectionSearchPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button {
-                isExpanded.toggle()
-                if !isExpanded { model.cancel() }
+                if isExpanded {
+                    queryComposing = false
+                    isExpanded = false
+                    model.cancel()
+                } else { isExpanded = true }
             } label: {
                 Label(isExpanded ? "Hide saved-document search" : "Search saved documents",
                       systemImage: isExpanded ? "chevron.up" : "magnifyingglass")
@@ -212,6 +215,7 @@ struct CollectionSearchQueryEditor: NSViewRepresentable {
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard !context.coordinator.isRetired else { return }
         context.coordinator.onChange = onChange
         guard let text = scroll.documentView as? NSTextView else { return }
         context.coordinator.isApplying = true
@@ -229,8 +233,8 @@ struct CollectionSearchQueryEditor: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ scroll: NSScrollView, coordinator: Coordinator) {
+        coordinator.retire()
         guard let text = scroll.documentView as? NSTextView else { return }
-        coordinator.finishComposition(text)
         (text as? CollectionSearchQueryTextView)?.onTextStateChanged = nil
         text.delegate = nil
     }
@@ -238,9 +242,14 @@ struct CollectionSearchQueryEditor: NSViewRepresentable {
     @MainActor final class Coordinator: NSObject, NSTextViewDelegate {
         var onChange: @MainActor (String, Bool) -> Void
         var isApplying = false
+        private(set) var isRetired = false
         init(onChange: @escaping @MainActor (String, Bool) -> Void) { self.onChange = onChange }
+        func retire() {
+            isRetired = true
+            onChange = { _, _ in }
+        }
         func report(_ text: NSTextView) {
-            guard !isApplying else { return }
+            guard !isRetired, !isApplying else { return }
             onChange(text.string, text.hasMarkedText())
         }
         func textDidChange(_ notification: Notification) {
@@ -249,7 +258,11 @@ struct CollectionSearchQueryEditor: NSViewRepresentable {
         func textViewDidChangeSelection(_ notification: Notification) {
             if let text = notification.object as? NSTextView { report(text) }
         }
+        func textDidEndEditing(_ notification: Notification) {
+            if let text = notification.object as? NSTextView { finishComposition(text) }
+        }
         func finishComposition(_ text: NSTextView) {
+            guard !isRetired else { return }
             if text.hasMarkedText() { text.unmarkText() }
             report(text)
         }
@@ -306,6 +319,7 @@ struct CollectionSearchQueryEditor: UIViewRepresentable {
     }
 
     func updateUIView(_ text: CollectionSearchQueryTextView, context: Context) {
+        guard !context.coordinator.isRetired else { return }
         context.coordinator.onChange = onChange
         context.coordinator.isApplying = true
         Self.apply(text, value: value, isEditable: context.environment.isEnabled)
@@ -322,7 +336,7 @@ struct CollectionSearchQueryEditor: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ text: CollectionSearchQueryTextView, coordinator: Coordinator) {
-        coordinator.finishComposition(text)
+        coordinator.retire()
         text.onTextStateChanged = nil
         text.delegate = nil
     }
@@ -330,15 +344,21 @@ struct CollectionSearchQueryEditor: UIViewRepresentable {
     @MainActor final class Coordinator: NSObject, UITextViewDelegate {
         var onChange: @MainActor (String, Bool) -> Void
         var isApplying = false
+        private(set) var isRetired = false
         init(onChange: @escaping @MainActor (String, Bool) -> Void) { self.onChange = onChange }
+        func retire() {
+            isRetired = true
+            onChange = { _, _ in }
+        }
         func report(_ text: UITextView) {
-            guard !isApplying else { return }
+            guard !isRetired, !isApplying else { return }
             onChange(text.text, text.markedTextRange != nil)
         }
         func textViewDidChange(_ textView: UITextView) { report(textView) }
         func textViewDidChangeSelection(_ textView: UITextView) { report(textView) }
         func textViewDidEndEditing(_ textView: UITextView) { finishComposition(textView) }
         func finishComposition(_ text: UITextView) {
+            guard !isRetired else { return }
             if text.markedTextRange != nil { text.unmarkText() }
             report(text)
         }

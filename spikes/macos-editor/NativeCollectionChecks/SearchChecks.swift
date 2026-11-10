@@ -199,9 +199,24 @@ private struct SavedSearchSnapshot: Equatable {
         text.selectedRange() == markedCaret && text.isEditable, "Stale query apply disturbed marked text")
     coordinator.finishComposition(text)
     try savedSearchRequire(!text.hasMarkedText() && callbacks.last?.1 == false &&
-        SourceSelection.sameText(callbacks.last?.0 ?? "", text.string), "Query composition teardown lost its final value")
+        SourceSelection.sameText(callbacks.last?.0 ?? "", text.string), "Finishing active query composition lost its final value")
+    text.setMarkedText("残", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: 0, length: 0))
+    try savedSearchRequire(text.hasMarkedText(), "Retired-callback marked-text positive control failed")
+    let retiringValue = text.string
+    let callbackCount = callbacks.count
+    coordinator.retire()
+    coordinator.report(text)
+    coordinator.textDidChange(Notification(name: NSText.didChangeNotification, object: text))
+    coordinator.textViewDidChangeSelection(Notification(name: NSTextView.didChangeSelectionNotification, object: text))
+    coordinator.finishComposition(text)
+    text.onTextStateChanged?()
+    try savedSearchRequire(coordinator.isRetired && callbacks.count == callbackCount && text.hasMarkedText() &&
+        SourceSelection.sameText(text.string, retiringValue), "Retired query coordinator changed state or finished dying composition")
+    text.onTextStateChanged = nil
+    text.delegate = nil
+    text.unmarkText()
     try savedSearchRequire(!window.isVisible, "Native query check showed its window")
-    print("PASS saved search query: actual literal input/policies, no autofocus, caret, marked-text preservation and final composition callback")
+    print("PASS saved search query: actual literal input/policies, no autofocus, caret, active composition callback and retired-callback refusal")
 }
 
 @MainActor private func checkSavedSearchPanel() async throws {
