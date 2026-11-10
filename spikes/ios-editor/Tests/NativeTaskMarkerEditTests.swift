@@ -42,8 +42,10 @@ import UIKit
 
 extension NativeTaskMarkerEditTests {
     func testAttachedNativeRefusalRestoresOnlyTheExpandedCaretSelection() throws {
-        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first,
-                                 "A synthetic hosted test scene is required")
+        let foregroundScenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
+        let scene = try XCTUnwrap(foregroundScenes.count == 1 ? foregroundScenes.first : nil,
+                                 "Exactly one foreground synthetic test scene is required before creating a fixture window")
         let oldKey = scene.windows.first { $0.isKeyWindow }
         let window = UIWindow(windowScene: scene)
         let controller = UIViewController()
