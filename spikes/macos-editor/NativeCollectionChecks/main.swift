@@ -420,10 +420,11 @@ private extension CollectionStore {
     try await checkLateCreateReceipt()
     stage("starting invisible close guards")
     try await checkInvisibleCloseGuards()
+    try await runSavedSearchChecks()
     try require(!NSApplication.shared.isActive && NSApplication.shared.windows.allSatisfy { !$0.isVisible },
                 "Offscreen checks activated the application or showed a window")
     try require(MacCollectionWorkspaceManager.shared.controller == nil, "Probe opened the real collection root")
-    print("Passed 5 focused native AppKit check groups. No real keyboard/IME, VoiceOver, full parser/preview, production storage/security or release acceptance claimed.")
+    print("Passed 8 focused native AppKit check groups. No real keyboard/IME, VoiceOver, full parser/preview, production storage/security or release acceptance claimed.")
 }
 
 @main private enum NativeCollectionChecks {

@@ -94,8 +94,8 @@ actor CollectionStore {
         guard fsync(directory) == 0 else { throw CollectionStoreError.collectionDurabilityUncertain(name) }
     }
 
-    func documents(in collection: String) throws -> [String] {
-        let directory = try openCollection(collection)
+    func documents(in collection: String, createRootIfMissing: Bool = true) throws -> [String] {
+        let directory = try openCollection(collection, createRootIfMissing: createRootIfMissing)
         defer { Darwin.close(directory) }
         return try documentNames(directory)
     }
@@ -121,9 +121,9 @@ actor CollectionStore {
         return StoredDocument(collection: collection, name: name, source: source, baseline: bytes, durabilityWarning: warning)
     }
 
-    func open(collection: String, name: String) throws -> StoredDocument {
+    func open(collection: String, name: String, createRootIfMissing: Bool = true) throws -> StoredDocument {
         try validateName(name, document: true)
-        let directory = try openCollection(collection)
+        let directory = try openCollection(collection, createRootIfMissing: createRootIfMissing)
         defer { Darwin.close(directory) }
         try requireExactName(name, names: documentNames(directory))
         let bytes = try readDocument(name, in: directory)
@@ -253,7 +253,7 @@ actor CollectionStore {
         }.sorted()
     }
 
-    private func openRoot() throws -> Int32 {
+    private func openRoot(createRootIfMissing: Bool = true) throws -> Int32 {
         let path = root.path
         let parts = path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
         guard root.isFileURL, path.hasPrefix("/"), !parts.isEmpty, parts.count <= 256,
@@ -264,7 +264,7 @@ actor CollectionStore {
         do {
             for (index, part) in parts.enumerated() {
                 var child = openat(directory, part, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
-                if child < 0, errno == ENOENT, index == parts.count - 1 {
+                if child < 0, errno == ENOENT, index == parts.count - 1, createRootIfMissing {
                     if mkdirat(directory, part, 0o700) != 0, errno != EEXIST { throw failure("create collection folder") }
                     guard fsync(directory) == 0 else { throw failure("synchronize collection folder") }
                     child = openat(directory, part, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
@@ -280,9 +280,9 @@ actor CollectionStore {
         }
     }
 
-    private func openCollection(_ name: String) throws -> Int32 {
+    private func openCollection(_ name: String, createRootIfMissing: Bool = true) throws -> Int32 {
         try validateName(name)
-        let directory = try openRoot()
+        let directory = try openRoot(createRootIfMissing: createRootIfMissing)
         defer { Darwin.close(directory) }
         try requireExactName(name, names: collectionNames(directory))
         let child = openat(directory, name, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
