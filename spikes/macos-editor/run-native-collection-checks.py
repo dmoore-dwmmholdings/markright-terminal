@@ -72,7 +72,7 @@ def main():
     ]
     require_headroom()
     subprocess.run([
-        "/usr/bin/xcrun", "swiftc", "-swift-version", "6", "-warnings-as-errors",
+        "/usr/bin/xcrun", "swiftc", "-j", "2", "-swift-version", "6", "-warnings-as-errors",
         "-parse-as-library", "-target", f"{platform.machine()}-apple-macos14.0",
         "-module-cache-path", str(cache), *map(str, sources), "-o", str(executable),
     ], cwd=ROOT, check=True, timeout=TIMEOUT_SECONDS)
