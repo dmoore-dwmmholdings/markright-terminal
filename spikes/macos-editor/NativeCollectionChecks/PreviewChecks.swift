@@ -294,7 +294,7 @@ private struct PreviewDiskSnapshot: Equatable {
             let added = views.filter { !baselineScrolls.contains(ObjectIdentifier($0)) }
             if !visible { return ids == baselineScrolls }
             return baselineScrolls.isSubset(of: ids) && added.count == 1 &&
-                added[0].bounds.width > 0 && added[0].bounds.height > 0
+                added[0].bounds.width >= 260 && added[0].bounds.height > 0
         }
     }
     workspace.showsSourcePreview = true

@@ -594,7 +594,7 @@ struct MacCollectionWorkspace: View {
                     if model.showsSourcePreview {
                         SourcePreviewPanel(source: session.model.documentSource, selection: session.model.documentSelection,
                                            composing: session.model.composing)
-                            .frame(minWidth: 180)
+                            .frame(minWidth: 260, idealWidth: 320)
                     }
                 }
             }
