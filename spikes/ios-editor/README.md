@@ -28,7 +28,7 @@ Block and whole-document editors now resume their saved UTF-16 selection extent 
 
 Result `build/MRK9-native-selection-full-20261110.xcresult`: **33 native/model/decoder + 12 UI tests pass**, zero failures/skips, with Swift warnings as errors. Nine new native groups cover validation, mapping, Unicode/revisions, stale/invalid ranges, actual UITextView replacement/marked text and a 1 MB model bookmark. Two UI flows type at restored block/document carets without tapping the editor. All four unfiltered light/dark preview/reading audits, rendered-caption OCR and the earlier 1 MB interaction smoke also pass. The owned iPhone Duo/iOS 27.2 simulator was restored to Shutdown; no other destination or runtime download was used.
 
-Only selection extent is retained: selection direction/affinity, prior scroll position, cross-mode undo, cross-launch selection persistence, real IME/VoiceOver, current iPad/physical devices and p95 paint remain open. Byte comparisons/range validation can scale with source length; this is not a production performance qualification. Local commits continue while the repository destination is resolved separately.
+Only selection extent is retained: selection direction/affinity, prior scroll position, cross-mode undo, cross-launch selection persistence, real IME/VoiceOver, current iPad/physical devices and p95 paint remain open. Byte comparisons/range validation can scale with source length; this is not a production performance qualification. Research commit IDs and publication provenance are described in docs/publication-review.md.
 
 ## Native reading mode
 
