@@ -72,6 +72,120 @@ private struct PreviewCheckFailure: Error, CustomStringConvertible {
     previewAXNodes(root).contains { ($0.label == name || $0.title == name) && $0.value == "Open" }
 }
 
+/// Optional local paint diagnostic of this synthetic fixture only. It neither
+/// captures the desktop nor changes window visibility/accessibility settings.
+@MainActor private func previewReadablePNG(_ bitmap: NSBitmapImageRep) throws -> Data {
+    // Preserve rendered ink while making transparent black text readable in
+    // image viewers with a black backdrop. This is not a window-background or
+    // contrast acceptance image; the original transparent captures are kept.
+    guard let opaque = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: bitmap.pixelsWide,
+        pixelsHigh: bitmap.pixelsHigh, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+        isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+        let context = NSGraphicsContext(bitmapImageRep: opaque) else {
+        throw PreviewCheckFailure("Cannot allocate readable comparison context")
+    }
+    NSGraphicsContext.saveGraphicsState()
+    defer { NSGraphicsContext.restoreGraphicsState() }
+    NSGraphicsContext.current = context
+    let rect = NSRect(x: 0, y: 0, width: bitmap.pixelsWide, height: bitmap.pixelsHigh)
+    context.cgContext.setFillColor(NSColor.white.cgColor)
+    context.cgContext.fill(rect)
+    guard bitmap.draw(in: rect, from: NSRect(origin: .zero, size: bitmap.size), operation: .sourceOver,
+                      fraction: 1, respectFlipped: false, hints: nil) else {
+        throw PreviewCheckFailure("Cannot draw readable comparison")
+    }
+    guard let png = opaque.representation(using: .png, properties: [:]) else {
+        throw PreviewCheckFailure("Cannot encode readable comparison")
+    }
+    return png
+}
+
+@MainActor private func previewSnapshot(_ name: String, root: NSView, rect: NSRect? = nil) async throws {
+    guard let requested = ProcessInfo.processInfo.environment["MARKRIGHT_PREVIEW_SNAPSHOTS"] else { return }
+    let directory = URL(fileURLWithPath: requested, isDirectory: true).standardizedFileURL
+    var repository = URL(fileURLWithPath: #filePath)
+    for _ in 0..<4 { repository.deleteLastPathComponent() }
+    let owner = repository.appendingPathComponent("spikes/.build/macos-native-collection-checks", isDirectory: true)
+        .standardizedFileURL.resolvingSymlinksInPath()
+    let prefix = "preview-snapshots-"
+    let attributes = try FileManager.default.attributesOfItem(atPath: directory.path)
+    guard directory.deletingLastPathComponent().resolvingSymlinksInPath() == owner,
+          directory.lastPathComponent.hasPrefix(prefix),
+          UUID(uuidString: String(directory.lastPathComponent.dropFirst(prefix.count))) != nil,
+          attributes[.type] as? FileAttributeType == .typeDirectory,
+          ["swiftui-control", "initial-preview", "initial-preview-subtree", "composition-paused", "unsaved-preview", "new-document"].contains(name),
+          root.window?.isVisible == false, !NSApplication.shared.isActive else {
+        throw PreviewCheckFailure("Unsafe synthetic preview snapshot target/state")
+    }
+    try await Task.sleep(for: .milliseconds(80))
+    root.layoutSubtreeIfNeeded()
+    let captureRect = (rect ?? root.bounds).intersection(root.bounds)
+    let backing = root.convertToBacking(captureRect)
+    guard captureRect.width > 0 && captureRect.height > 0,
+          captureRect.width <= 2048 && captureRect.height <= 2048,
+          backing.width.isFinite && backing.height.isFinite &&
+          backing.width > 0 && backing.height > 0 && backing.width <= 4096 && backing.height <= 4096,
+          let bitmap = root.bitmapImageRepForCachingDisplay(in: captureRect),
+          bitmap.pixelsWide > 0 && bitmap.pixelsHigh > 0 &&
+          bitmap.pixelsWide <= 4096 && bitmap.pixelsHigh <= 4096 else {
+        throw PreviewCheckFailure("Synthetic snapshot bitmap exceeds bounds")
+    }
+    root.cacheDisplay(in: captureRect, to: bitmap)
+    guard let png = bitmap.representation(using: .png, properties: [:]), png.count <= 8 * 1024 * 1024 else {
+        throw PreviewCheckFailure("Synthetic snapshot PNG exceeds bounds")
+    }
+    try png.write(to: directory.appendingPathComponent(name + ".png"), options: .withoutOverwriting)
+    let readable = try previewReadablePNG(bitmap)
+    guard readable.count <= 8 * 1024 * 1024 else {
+        throw PreviewCheckFailure("Synthetic readable PNG exceeds bounds")
+    }
+    try readable.write(to: directory.appendingPathComponent(name + "-white.png"), options: .withoutOverwriting)
+    print("[PreviewChecks] synthetic paint diagnostic \(name): \(bitmap.pixelsWide)x\(bitmap.pixelsHigh), \(png.count) bytes; no rendering/accessibility acceptance")
+    // Compare the public layer-tree renderer with NSView caching. Neither is a
+    // window-server screenshot or a complete Core Animation composition proof.
+    guard let layer = root.layer else {
+        print("[PreviewChecks] \(name): no root layer for comparison")
+        return
+    }
+    guard let layered = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: bitmap.pixelsWide,
+        pixelsHigh: bitmap.pixelsHigh, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+        isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+        let context = NSGraphicsContext(bitmapImageRep: layered) else {
+        throw PreviewCheckFailure("Cannot allocate bounded layer comparison bitmap")
+    }
+    root.displayIfNeeded()
+    layer.displayIfNeeded()
+    context.cgContext.translateBy(x: 0, y: CGFloat(bitmap.pixelsHigh))
+    context.cgContext.scaleBy(x: CGFloat(bitmap.pixelsWide) / captureRect.width,
+                              y: -CGFloat(bitmap.pixelsHigh) / captureRect.height)
+    context.cgContext.translateBy(x: -captureRect.minX, y: -captureRect.minY)
+    layer.render(in: context.cgContext)
+    guard let layerPNG = layered.representation(using: .png, properties: [:]), layerPNG.count <= 8 * 1024 * 1024 else {
+        throw PreviewCheckFailure("Synthetic layer PNG exceeds bounds")
+    }
+    try layerPNG.write(to: directory.appendingPathComponent(name + "-layers.png"), options: .withoutOverwriting)
+    print("[PreviewChecks] synthetic layer comparison \(name): \(layerPNG.count) bytes; incomplete composition model, diagnostic only")
+}
+
+@MainActor private func previewPaintControl() async throws {
+    guard ProcessInfo.processInfo.environment["MARKRIGHT_PREVIEW_SNAPSHOTS"] != nil else { return }
+    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 160),
+                          styleMask: [.borderless], backing: .buffered, defer: false)
+    window.isReleasedWhenClosed = false
+    let host = NSHostingView(rootView: Text("Synthetic SwiftUI paint control")
+        .font(.title).padding().frame(width: 400, height: 160).background(Color.yellow)
+        .accessibilityIdentifier("preview-paint-control"))
+    host.frame = NSRect(x: 0, y: 0, width: 400, height: 160)
+    window.contentView = host
+    defer { window.contentView = nil; window.close() }
+    try await previewSnapshot("swiftui-control", root: host)
+    let observed = previewAXNodes(host).contains {
+        $0.id == "preview-paint-control" || $0.label?.contains("Synthetic SwiftUI paint control") == true ||
+            $0.title?.contains("Synthetic SwiftUI paint control") == true || $0.value?.contains("Synthetic SwiftUI paint control") == true
+    }
+    print("[PreviewChecks] plain SwiftUI control semantic observation: \(observed); diagnostic only")
+}
+
 private struct PreviewFixture {
     let root: URL
     init() throws {
@@ -116,6 +230,7 @@ private struct PreviewDiskSnapshot: Equatable {
 }
 
 @MainActor func runSourcePreviewChecks() async throws {
+    try await previewPaintControl()
     let fixture = try PreviewFixture()
     defer { fixture.remove() }
     let store = CollectionStore(root: fixture.root)
@@ -207,6 +322,15 @@ private struct PreviewDiskSnapshot: Equatable {
     if !hasSemanticObservation {
         FileHandle.standardError.write(Data("[PreviewChecks] Rendering gate remains failed; continue independent native data-retention checks. Dependent AX assertions are unrun.\n".utf8))
     }
+    try await previewSnapshot("initial-preview", root: root)
+    if ProcessInfo.processInfo.environment["MARKRIGHT_PREVIEW_SNAPSHOTS"] != nil {
+        let added = previewScrollViews(root).filter { !baselineScrolls.contains(ObjectIdentifier($0)) }
+        guard added.count == 1, let document = added[0].documentView else {
+            throw PreviewCheckFailure("Unique preview document subtree missing")
+        }
+        print("[PreviewChecks] preview subtree bounds=\(document.bounds), visible=\(document.visibleRect)")
+        try await previewSnapshot("initial-preview-subtree", root: document, rect: document.visibleRect)
+    }
     for _ in 0..<2 {
         workspace.showsSourcePreview = false
         try await waitForPane(false)
@@ -238,6 +362,7 @@ private struct PreviewDiskSnapshot: Equatable {
         SourcePreviewProjection.make(source: session.model.source, selection: session.model.documentSelection, composing: session.model.composing).state == .composing
     }
     if hasSemanticObservation { await observe("composition preview pause") { previewPanelText(root)?.contains("paused") == true } }
+    try await previewSnapshot("composition-paused", root: root)
     try previewRequire(previewFindSource(root) === source && source.hasMarkedText() && window.firstResponder === source,
                        "Preview pause recreated source, ended marked text or moved focus")
     source.unmarkText()
@@ -255,6 +380,7 @@ private struct PreviewDiskSnapshot: Equatable {
             SourcePreviewProjection.make(source: session.model.source, selection: session.model.documentSelection, composing: false).rows.contains { String($0.display.characters).contains("Unsaved LATEST") }
     }
     if hasSemanticObservation { await observe("unsaved rendered preview") { previewPanelText(root)?.contains("Unsaved LATEST") == true } }
+    try await previewSnapshot("unsaved-preview", root: root)
     let dirtyValue = session.model.source, dirtyRevision = session.model.sourceRevision
     let recoveryID = session.recoveryDraft?.id, dirtyCaret = source.selectedRange()
     let conflictedSnapshot = try PreviewDiskSnapshot(root: fixture.root)
@@ -289,6 +415,7 @@ private struct PreviewDiskSnapshot: Equatable {
     }
     guard let current = workspace.session else { throw PreviewCheckFailure("Changed document session missing") }
     let currentProjection = SourcePreviewProjection.make(source: current.model.source, selection: current.model.documentSelection, composing: false)
+    try await previewSnapshot("new-document", root: root)
     try previewRequire(currentProjection.rows.contains { $0.source.contains("Other **document**") } &&
         !currentProjection.rows.contains { $0.source.contains("ACTIVE_SOURCE") }, "Projection retained old document state")
     let originalDisk = try Data(contentsOf: fixture.document("First.md"))

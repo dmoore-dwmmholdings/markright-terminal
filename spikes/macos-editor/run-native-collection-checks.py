@@ -2,12 +2,14 @@
 """Build and run the separate, invisible AppKit collection checks on macOS."""
 
 from pathlib import Path
+import argparse
 import os
 import platform
 import plistlib
 import shutil
 import subprocess
 import sys
+import uuid
 
 
 DIRECTORY = Path(__file__).resolve().parent
@@ -23,6 +25,10 @@ def require_headroom():
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--preview-snapshots", action="store_true",
+                        help="Capture only synthetic offscreen preview views into a fresh owned diagnostic directory.")
+    arguments = parser.parse_args()
     if sys.platform != "darwin":
         raise RuntimeError("The native collection checks require macOS and the Xcode command line tools.")
     require_headroom()
@@ -82,6 +88,12 @@ def main():
     # Run this private executable directly; never open/activate the research app.
     environment = dict(os.environ)
     environment["NSUnbufferedIO"] = "YES"
+    environment.pop("MARKRIGHT_PREVIEW_SNAPSHOTS", None)
+    if arguments.preview_snapshots:
+        snapshots = BUILD / ("preview-snapshots-" + str(uuid.uuid4()))
+        snapshots.mkdir(exist_ok=False)
+        environment["MARKRIGHT_PREVIEW_SNAPSHOTS"] = str(snapshots)
+        print("Synthetic preview snapshots: " + str(snapshots), flush=True)
     subprocess.run([str(executable)], cwd=ROOT, env=environment, check=True, timeout=TIMEOUT_SECONDS)
 
 
