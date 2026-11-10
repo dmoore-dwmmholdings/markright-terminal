@@ -10,12 +10,16 @@ struct SourceBlock: Identifiable, Equatable {
     let atomic: Bool
 }
 @MainActor @Observable final class EditorModel {
-    var blocks: [SourceBlock]
-    var active: Int?
+    private(set) var blocks: [SourceBlock]
+    private(set) var active: Int?
     var composing = false
-    var sourceMode = false
+    private(set) var sourceMode = false
     private(set) var readingMode = false
-    var documentSource = ""
+    private(set) var documentSource = ""
+    private(set) var documentSelection = SourceSelection.beginning
+    private var sourceRevision = 0
+    private var documentSelectionRevision: Int?
+    private var blockSelections: [Int: NSRange] = [:]
     private(set) var editingGeneration = 0
     static let sample = "# Markright Terminal\nNative **preview** example\n\n```swift\nlet value = 42\n```\n\n| Field | Value |\n| --- | --- |\n| status | ready |\n\nUnicode 😀 and café"
     static var launchSource: String {
@@ -100,34 +104,55 @@ struct SourceBlock: Identifiable, Equatable {
         return text
     }
     func activate(_ id: Int) {
-        guard !composing && !sourceMode && !readingMode else { return }
-        if active != id { editingGeneration += 1 }
+        guard !composing && !sourceMode && !readingMode, blocks.contains(where: { $0.id == id }) else { return }
+        if active != id {
+            editingGeneration += 1
+            if blockSelections[id] == nil {
+                restoreBlockSelectionFromDocument(id)
+                if blockSelections[id] == nil { blockSelections[id] = SourceSelection.beginning }
+            }
+        }
         active = id
     }
     func showSource() {
         guard !composing && !sourceMode && !readingMode else { return }
+        if let active { rememberDocumentSelection(from: active) }
         documentSource = source
+        if documentSelectionRevision != sourceRevision {
+            documentSelection = SourceSelection.beginning
+            documentSelectionRevision = sourceRevision
+        }
         editingGeneration += 1
         active = nil
         sourceMode = true
     }
-    func updateDocumentSource(_ value: String, composing: Bool, generation: Int) {
+    func updateDocumentSource(_ value: String, composing: Bool, generation: Int, selection: NSRange? = nil) {
         guard !readingMode && sourceMode && generation == editingGeneration else { return }
         self.composing = composing
-        documentSource = value
+        if !SourceSelection.sameText(documentSource, value) {
+            invalidateDocumentSelection()
+            documentSource = value
+        }
+        if !composing, let selection { saveDocumentSelection(selection, in: value) }
     }
-    func updateBlockFromEditor(_ id: Int, _ value: String, composing: Bool, generation: Int) {
+    func updateBlockFromEditor(_ id: Int, _ value: String, composing: Bool, generation: Int, selection: NSRange? = nil) {
         guard !readingMode && !sourceMode && active == id && generation == editingGeneration else { return }
         self.composing = composing
         update(id, value)
+        if !composing, let selection {
+            blockSelections[id] = SourceSelection.isValid(selection, in: value) ? selection : nil
+        }
     }
     func finish() {
         guard !composing && !readingMode else { return }
         editingGeneration += 1
         if sourceMode {
             blocks = EditorModel(source: documentSource).blocks
+            blockSelections.removeAll()
             sourceMode = false
             documentSource = ""
+        } else if let active {
+            rememberDocumentSelection(from: active)
         }
         active = nil
     }
@@ -146,19 +171,82 @@ struct SourceBlock: Identifiable, Equatable {
     }
     func update(_ id: Int, _ source: String) {
         guard !readingMode, let index = blocks.firstIndex(where: {$0.id == id}) else { return }
+        guard !SourceSelection.sameText(blocks[index].source, source) else { return }
+        blockSelections[id] = nil
+        invalidateDocumentSelection()
         blocks[index].source = source
+    }
+    func selection(for id: Int) -> NSRange {
+        guard let range = blockSelections[id], let block = blocks.first(where: { $0.id == id }),
+              SourceSelection.isValid(range, in: block.source) else { return SourceSelection.beginning }
+        return range
+    }
+    private func invalidateDocumentSelection() {
+        sourceRevision += 1
+        documentSelectionRevision = nil
+        documentSelection = SourceSelection.beginning
+    }
+    private func saveDocumentSelection(_ range: NSRange, in source: String) {
+        guard SourceSelection.isValid(range, in: source) else {
+            documentSelection = SourceSelection.beginning
+            documentSelectionRevision = nil
+            return
+        }
+        documentSelection = range
+        documentSelectionRevision = sourceRevision
+    }
+    private func rememberDocumentSelection(from id: Int) {
+        var offset = 0
+        for block in blocks {
+            if block.id == id {
+                guard let local = blockSelections[id], SourceSelection.isValid(local, in: block.source) else {
+                    documentSelection = SourceSelection.beginning
+                    documentSelectionRevision = nil
+                    return
+                }
+                saveDocumentSelection(NSRange(location: offset + local.location, length: local.length), in: source)
+                return
+            }
+            offset += block.source.utf16.count + block.separatorAfter.utf16.count
+        }
+    }
+    private func restoreBlockSelectionFromDocument(_ id: Int) {
+        guard documentSelectionRevision == sourceRevision else { return }
+        var offset = 0
+        for block in blocks {
+            let count = block.source.utf16.count
+            if block.id == id {
+                let local = documentSelection.location - offset
+                guard local >= 0 && local <= count && documentSelection.length <= count - local else { return }
+                let range = NSRange(location: local, length: documentSelection.length)
+                if SourceSelection.isValid(range, in: block.source) { blockSelections[id] = range }
+                return
+            }
+            offset += count + block.separatorAfter.utf16.count
+        }
     }
 }
 
+@MainActor final class SourceTextView: UITextView {
+    var focusesOnAttachment = true
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard window != nil && focusesOnAttachment else { return }
+        focusesOnAttachment = false
+        becomeFirstResponder()
+        scrollRangeToVisible(selectedRange)
+    }
+}
 
 struct NativeSourceEditor: UIViewRepresentable {
     let value: String
     let id: Int
+    var selection = SourceSelection.beginning
     var wholeDocument = false
-    let onChange: (String, Bool) -> Void
+    let onChange: (String, Bool, NSRange) -> Void
     func makeCoordinator() -> Coordinator { Coordinator(onChange: onChange) }
     func makeUIView(context: Context) -> UITextView {
-        let view = UITextView()
+        let view = SourceTextView()
         view.font = UIFont.preferredFont(forTextStyle: .body)
         view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .secondarySystemBackground
@@ -173,30 +261,44 @@ struct NativeSourceEditor: UIViewRepresentable {
         view.accessibilityIdentifier = wholeDocument ? "document-source-editor" : "source-editor-\(id)"
         view.accessibilityLabel = wholeDocument ? "Document Markdown source" : "Source for block \(id)"
         view.text = value
+        Self.restoreSelection(selection, in: view)
         view.delegate = context.coordinator
         return view
     }
     func updateUIView(_ view: UITextView, context: Context) {
         context.coordinator.onChange = onChange
+        Self.apply(value, selection: selection, to: view)
+    }
+    static func apply(_ value: String, selection: NSRange, to view: UITextView) {
         // Avoid selection resets and marked-text replacement during SwiftUI updates.
-        if view.markedTextRange == nil && view.text != value { view.text = value }
+        if view.markedTextRange == nil && !SourceSelection.sameText(view.text, value) {
+            let delegate = view.delegate
+            view.delegate = nil
+            view.text = value
+            Self.restoreSelection(selection, in: view)
+            view.delegate = delegate
+        }
+    }
+    static func restoreSelection(_ range: NSRange, in view: UITextView) {
+        view.selectedRange = SourceSelection.isValid(range, in: view.text) ? range : SourceSelection.beginning
     }
     static func dismantleUIView(_ view: UITextView, coordinator: Coordinator) {
         coordinator.finishComposition(view)
+        (view as? SourceTextView)?.focusesOnAttachment = false
         view.delegate = nil
     }
     @MainActor final class Coordinator: NSObject, UITextViewDelegate {
-        var onChange: (String, Bool) -> Void
-        init(onChange: @escaping (String, Bool) -> Void) { self.onChange = onChange }
+        var onChange: (String, Bool, NSRange) -> Void
+        init(onChange: @escaping (String, Bool, NSRange) -> Void) { self.onChange = onChange }
         func finishComposition(_ textView: UITextView) {
             // Native teardown commits visible marked text before the view disappears.
             textView.unmarkText()
-            onChange(textView.text, false)
+            onChange(textView.text, false, textView.selectedRange)
         }
         func textViewDidEndEditing(_ textView: UITextView) { finishComposition(textView) }
-        func textViewDidChange(_ textView: UITextView) { onChange(textView.text, textView.markedTextRange != nil) }
+        func textViewDidChange(_ textView: UITextView) { onChange(textView.text, textView.markedTextRange != nil, textView.selectedRange) }
         func textViewDidChangeSelection(_ textView: UITextView) {
-            if textView.markedTextRange == nil { onChange(textView.text, false) }
+            onChange(textView.text, textView.markedTextRange != nil, textView.selectedRange)
         }
     }
 }
@@ -259,9 +361,9 @@ struct EditorScreen: View {
         Text("Interaction prototype. Not a complete Markdown editor.").font(.caption).foregroundStyle(.primary)
         if model.sourceMode {
             let generation = model.editingGeneration
-            NativeSourceEditor(value: model.documentSource, id: -1, wholeDocument: true) { value, composing in
-                model.updateDocumentSource(value, composing: composing, generation: generation)
-            }.frame(height: 500)
+            NativeSourceEditor(value: model.documentSource, id: -1, selection: model.documentSelection, wholeDocument: true) { value, composing, selection in
+                model.updateDocumentSource(value, composing: composing, generation: generation, selection: selection)
+            }.id(generation).frame(height: 500)
         } else {
             ForEach(model.blocks) { block in
                 if model.readingMode {
@@ -272,9 +374,9 @@ struct EditorScreen: View {
                         .accessibilityIdentifier("reading-\(block.id)")
                 } else if model.active == block.id {
                     let generation = model.editingGeneration
-                    NativeSourceEditor(value: block.source, id: block.id) { value, composing in
-                        model.updateBlockFromEditor(block.id, value, composing: composing, generation: generation)
-                    }.frame(minHeight: block.atomic ? 150 : 64)
+                    NativeSourceEditor(value: block.source, id: block.id, selection: model.selection(for: block.id)) { value, composing, selection in
+                        model.updateBlockFromEditor(block.id, value, composing: composing, generation: generation, selection: selection)
+                    }.id(generation).frame(minHeight: block.atomic ? 150 : 64)
                 } else {
                     Button { model.activate(block.id) } label: {
                         Group {

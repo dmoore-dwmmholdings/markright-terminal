@@ -142,7 +142,7 @@ import UIKit
         XCTAssertTrue(block.atomic)
         let view = UITextView()
         view.text = block.source
-        let coordinator = NativeSourceEditor.Coordinator { value, composing in
+        let coordinator = NativeSourceEditor.Coordinator { value, composing, _ in
             model.composing = composing
             model.update(block.id, value)
         }
@@ -221,7 +221,7 @@ import UIKit
     func testNativeMarkedTextDefersPreviewUntilCommitted() {
         let model = EditorModel(source: "source"); model.activate(0)
         let view = UITextView(); view.text = "source"
-        let coordinator = NativeSourceEditor.Coordinator { source, composing in
+        let coordinator = NativeSourceEditor.Coordinator { source, composing, _ in
             model.composing = composing; model.update(0, source)
         }
         view.delegate = coordinator
@@ -238,7 +238,7 @@ import UIKit
     func testComposingEditorTeardownCommitsSourceAndClearsGuard() {
         let model = EditorModel(source: "source"); model.activate(0)
         let view = UITextView(); view.text = "source"
-        let coordinator = NativeSourceEditor.Coordinator { source, composing in
+        let coordinator = NativeSourceEditor.Coordinator { source, composing, _ in
             model.composing = composing; model.update(0, source)
         }
         view.delegate = coordinator; view.selectedRange = NSRange(location: 1, length: 0)

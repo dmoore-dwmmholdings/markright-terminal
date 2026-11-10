@@ -11,7 +11,7 @@ The current GitHub destination check and exact push blocker are recorded in [doc
 - macOS headless TextKit storage: `swift spikes/native-editor/source-mapping.swift`.
 - Headless 1 MB projection measurement: `node scripts/measure-editor.mjs`.
 - Standalone macOS WebKit research app: build instructions and exact limitations in `spikes/macos-editor/README.md`.
-- Native Swift interaction, source fallback and reading mode: `spikes/ios-editor/README.md`.
+- Native Swift interaction, source/reading modes and selection continuity: `spikes/ios-editor/README.md`.
 
 Use a supported Node.js 22+ installation; verification runs use Node.js 24.
 

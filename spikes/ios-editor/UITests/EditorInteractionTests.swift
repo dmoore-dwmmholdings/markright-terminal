@@ -1,6 +1,34 @@
 import XCTest
 import Vision
 @MainActor final class EditorInteractionTests: XCTestCase {
+    func testBlockCaretResumesAfterReadingWithoutTappingTheEditor() {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["preview-1"].waitForExistence(timeout: 10)); app.buttons["preview-1"].tap()
+        let editor = app.textViews["source-editor-1"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5)); XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        app.typeText("CARET")
+        let before = editor.value as? String ?? ""
+        XCTAssertTrue(before.hasPrefix("CARET"))
+        app.buttons["toggle-reading-mode"].tap(); app.buttons["toggle-reading-mode"].tap()
+        app.buttons["preview-1"].tap()
+        XCTAssertTrue(editor.waitForExistence(timeout: 5)); XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        app.typeText("X")
+        XCTAssertEqual(editor.value as? String, before.replacingOccurrences(of: "CARET", with: "CARETX"))
+    }
+    func testWholeSourceCaretResumesAfterReadingWithoutTappingTheEditor() {
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["show-document-source"].waitForExistence(timeout: 10)); app.buttons["show-document-source"].tap()
+        let editor = app.textViews["document-source-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5)); XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        app.typeText("CARET")
+        let before = editor.value as? String ?? ""
+        XCTAssertTrue(before.hasPrefix("CARET"))
+        app.buttons["toggle-reading-mode"].tap(); app.buttons["toggle-reading-mode"].tap()
+        app.buttons["show-document-source"].tap()
+        XCTAssertTrue(editor.waitForExistence(timeout: 5)); XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        app.typeText("X")
+        XCTAssertEqual(editor.value as? String, before.replacingOccurrences(of: "CARET", with: "CARETX"))
+    }
     private func audit(_ app: XCUIApplication) throws {
         try app.performAccessibilityAudit(for: .all) { issue in
             let element = issue.element
