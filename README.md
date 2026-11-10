@@ -11,6 +11,8 @@ A **local source-line selection candidate** adds **Select source lines** to the 
 
 A **local source-outline candidate** adds a bounded **Document outline** menu to the native whole-document editors. It lists top-level ATX headings with level, physical line and literal title, and selects the chosen heading without changing the source or undo. Shared, AppKit and web checks pass. [Behavior and verification](docs/native-source-outline-validation.md).
 
+A **local outline-label candidate** bounds native heading labels by both Characters and UTF-16 units while preserving complete source/navigation ranges. Compilation and execution are pending. [Behavior and evidence status](docs/native-outline-label-validation.md).
+
 ## Reproduce
 
 - Node 22+: `npm ci --ignore-scripts`, then `npm test`.
