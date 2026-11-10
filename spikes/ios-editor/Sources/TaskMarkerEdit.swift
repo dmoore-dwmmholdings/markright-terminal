@@ -20,12 +20,17 @@ enum TaskMarkerEdit {
                 let previous = text.character(at: start - 1)
                 if previous == 13 || previous == 10 { break }
                 start -= 1
+                // Every UTF-16 unit needs at least one UTF-8 byte. Once this
+                // partial row alone exceeds the byte budget, no continuation
+                // can make the whole row eligible.
+                guard selection.location - start <= MarkdownInsertionPlan.maximumSelectionBytes else { return nil }
             }
             var end = selection.location
             while end < text.length {
                 let next = text.character(at: end)
                 if next == 13 || next == 10 { break }
                 end += 1
+                guard end - start <= MarkdownInsertionPlan.maximumSelectionBytes else { return nil }
             }
             range = NSRange(location: start, length: end - start)
         } else {

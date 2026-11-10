@@ -182,6 +182,31 @@ final class TaskMarkerEditTests: XCTestCase {
         XCTAssertNil(TaskMarkerEdit.make(source: row + "a", selection: caret))
     }
 
+    func testCaretRowBudgetAtBeginningMiddleAndEndPreservesExactBoundary() throws {
+        let limit = MarkdownInsertionPlan.maximumSelectionBytes
+        let exact = "- [ ] " + String(repeating: "a", count: limit - 6)
+        let changed = "- [x] " + String(repeating: "a", count: limit - 6)
+        for location in [0, limit / 2, limit] {
+            _ = try verify(exact + "\r\n", selection: NSRange(location: location, length: 0), expected: changed + "\r\n")
+        }
+        // Both row-discovery directions must refuse an ineligible row; the
+        // outside rows and their original CRLF/CR separators remain untouched.
+        let prefix = "outside\r\n", oversized = exact + "a", suffix = "\rafter"
+        let source = prefix + oversized + suffix
+        for offset in [0, oversized.utf16.count / 2, oversized.utf16.count] {
+            XCTAssertNil(TaskMarkerEdit.make(source: source,
+                selection: NSRange(location: prefix.utf16.count + offset, length: 0)))
+        }
+        // UTF-16 length alone is not the byte limit: supplementary text still
+        // requires the authoritative UTF-8 check after bounded discovery.
+        let wide = "- [ ] " + String(repeating: "😀", count: limit / 4)
+        XCTAssertLessThan(wide.utf16.count, limit)
+        XCTAssertGreaterThan(wide.utf8.count, limit)
+        for location in [0, wide.utf16.count] {
+            XCTAssertNil(TaskMarkerEdit.make(source: wide, selection: NSRange(location: location, length: 0)))
+        }
+    }
+
     func testExactOneMiBSourceBoundaryAllowsSmallEditButRefusesOneMoreByte() throws {
         let task = "- [ ] Café 😀"
         let limit = MarkdownInsertionPlan.maximumSourceBytes
