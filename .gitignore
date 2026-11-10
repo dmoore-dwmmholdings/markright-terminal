@@ -9,3 +9,6 @@ spikes/firebase/*debug.log
 spikes/firebase/.firebase/
 
 spikes/desktop/build/
+
+spikes/.build/
+spikes/.swiftpm/

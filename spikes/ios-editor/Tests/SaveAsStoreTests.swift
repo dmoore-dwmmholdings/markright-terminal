@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor final class SaveAsStoreTests: XCTestCase {
     private func fixture() async throws -> (URL, CollectionStore, StoredDocument, DocumentSession) {
-        let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent("SaveAsStoreTests-" + UUID().uuidString)
+        let root = try NativeTestDirectory.parent().appendingPathComponent("SaveAsStoreTests-" + UUID().uuidString)
         addTeardownBlock { try? FileManager.default.removeItem(at: root) }
         let store = CollectionStore(root: root)
         try await store.createCollection("Work"); try await store.createCollection("Archive")

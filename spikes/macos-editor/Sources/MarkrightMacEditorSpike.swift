@@ -2,12 +2,18 @@ import SwiftUI
 import WebKit
 
 @main struct MarkrightMacEditorSpikeApp: App {
+    @NSApplicationDelegateAdaptor(MarkrightMacApplicationDelegate.self) private var applicationDelegate
+
     var body: some Scene {
         Window("Markright macOS research", id: "markright-research") {
             ResearchEditorScreen()
         }
         .defaultSize(width: 1024, height: 760)
-        .commands { CommandGroup(replacing: .newItem) {} }
+        .commands {
+            CommandGroup(replacing: .newItem) {
+                Button("Open collections") { MacCollectionWorkspaceManager.shared.openWorkspace() }
+            }
+        }
     }
 }
 
@@ -21,6 +27,8 @@ struct ResearchEditorScreen: View {
                     .font(.headline)
                 Text("Synthetic fixture only. No file saving, collections, accounts or sync. Closing the window discards edits.")
                     .font(.callout)
+                Button("Open collections") { MacCollectionWorkspaceManager.shared.openWorkspace() }
+                    .help("Open the separate app-owned native source and recovery prototype")
                 Text(status)
                     .font(.caption)
                     .foregroundStyle(.secondary)

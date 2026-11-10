@@ -6,7 +6,7 @@ import Darwin
 
 @MainActor final class RecoveryStoreTests: XCTestCase {
     private func fixture() throws -> (URL, CollectionStore) {
-        let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+        let root = try NativeTestDirectory.parent()
             .appendingPathComponent("RecoveryStoreTests-" + UUID().uuidString, isDirectory: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: root) }
         return (root, CollectionStore(root: root))

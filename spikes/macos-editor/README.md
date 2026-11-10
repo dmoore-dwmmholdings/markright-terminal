@@ -1,6 +1,19 @@
-# MRK-9 macOS system-WKWebView research host
+# macOS native collections and system-WKWebView research
+
+MRK-39 adds a separate native SwiftUI/AppKit collection/source/recovery workspace through **Open collections**. It shares the iOS storage/session model and supports app-owned create/open/autosave, cross-collection Save As, inert recovery preview and separate-copy restore with close/quit guards. It does not grant WebKit access to stored documents. See [the workflow, verification and limits](../../docs/native-macos-collections-validation.md). External selected folders, full rendering and production desktop architecture remain open. The existing visible Debug app has not been rebuilt or restarted; verification uses the separate Verification product.
 
 Standalone SwiftUI window around the existing synthetic desktop CodeMirror fixture. This is a macOS shell experiment, not a selected production architecture, Tauri integration, complete Markdown application or native iOS implementation. MRK-9 VoiceOver observation and MRK-12 integrated review remain open.
+
+The separate native workspace can be checked without opening the visible research app:
+
+```sh
+python3 spikes/macos-editor/run-native-collection-checks.py
+swift test --package-path spikes --scratch-path spikes/macos-editor/build/SharedNativePackage -Xswiftc -warnings-as-errors
+```
+
+Both commands run from the repository root. The AppKit probe uses synthetic temporary collections and a prohibited activation policy; it never calls the real app-owned workspace manager. Run serially with other builds and retain at least 20 GiB free.
+
+MRK-39 passes **58 shared storage/session tests +5 focused AppKit groups**, with Swift warnings as errors. The separate unsigned arm64 Verification app also builds successfully. Programmatic source/undo/marked-text, late edit/receipt, recovery reuse and close-race evidence and failed harness diagnostics are documented in the linked validation record. Real keyboard/IME, VoiceOver, external providers, network isolation and release gates remain open.
 
 The bundled fixture now includes read-only Reading mode. All 12 scoped offscreen groups pass in `build/reading-mode-native-20261110.log`, including immediate preview refresh, delivered-paste refusal and exact source/reverse selection retention. Separate browser checks pass 33/skip 1; all 87 Node groups pass. `build/reading-mode-host-20261110.log` records the unsigned warnings-as-errors build into the unused separate Verification product. The visible Debug app/tabs were preserved. The first attempt's below 20 GiB resource stop is retained; after cleanup about 47 GiB allowed sequential verification. These are scoped UI-policy checks, not OS keyboard/clipboard/VoiceOver or network-isolation acceptance. See desktop README/ADR0002 for limits.
 
@@ -17,7 +30,7 @@ xcodebuild -project spikes/macos-editor/MarkrightMacEditorSpike.xcodeproj -schem
 
 The preparation step copies only `spikes/desktop/index.html` and its generated IIFE bundle. It changes the copied script URL to a relative local classic script and injects a CSP; source desktop files remain unchanged. No dependencies are fetched and dependency versions remain pinned in the existing npm lockfile. Regenerate resources after editor changes. Generated resources, project and build output are ignored locally.
 
-App: `spikes/macos-editor/build/Build/Products/Debug/MarkrightMacEditorSpike.app`. Building does not open the app or disturb foreground applications. Closing the native window discards edits; the host has no save/export/open-file interface.
+App: `spikes/macos-editor/build/Build/Products/Debug/MarkrightMacEditorSpike.app`. Building does not open the app or disturb foreground applications. Closing the bundled WebKit fixture discards its edits. Persistent documents use the explicitly opened separate native collection workspace; there is no WebKit save/open interface.
 
 Headless navigation-policy checks, also from the repository root:
 
@@ -83,7 +96,7 @@ No interactive OS typing/undo, native accessibility/VoiceOver, OS IME or latency
 
 ## Deliberate boundary
 
-- Nonpersistent `WKWebsiteDataStore`; no accounts, disk document persistence or sync.
+- Nonpersistent `WKWebsiteDataStore`; the WebKit fixture has no accounts, disk document persistence or sync. The separate native workspace uses the shared app-owned collection store with no WebKit bridge.
 - The navigation allowlist permits only the exact bundled `index.html` plus fragment changes. Delegates refuse new windows, subframe/download-marked navigations and JavaScript dialogs.
 - The native request preflight covers only `load(URLRequest)`; delegate checks reject download-marked navigations, but separate native loader/download/history APIs are not demonstrated isolated.
 - `loadFileURL` grants WebKit read access only to the generated Editor resource directory. No user-document grants or native message handlers are registered.

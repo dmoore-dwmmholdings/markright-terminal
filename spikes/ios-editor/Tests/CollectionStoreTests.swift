@@ -7,7 +7,7 @@ import Darwin
     private func fixture() throws -> (URL, CollectionStore) {
         // The system temporary-directory spelling can contain /var symlinks.
         // Resolve the trusted parent before passing the app-owned leaf to the store.
-        let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+        let root = try NativeTestDirectory.parent()
             .appendingPathComponent("CollectionStoreTests-" + UUID().uuidString, isDirectory: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: root) }
         return (root, CollectionStore(root: root))

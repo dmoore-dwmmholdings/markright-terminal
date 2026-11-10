@@ -2,7 +2,9 @@
 
 Native SwiftUI collection browsing and native UITextView source/preview/reading editing. The app-owned collection validation is tracked by MRK-36, bounded recovery by MRK-37 and Save As by MRK-38; editor interaction research remains MRK-9. Automated runs use synthetic documents on the dedicated simulator, with no sync, script execution, signing account or physical devices.
 
-The default launch now creates and reopens app-owned collection folders and UTF-8 documents with autosave. See [the storage contract and limitations](../../docs/native-collections-validation.md). External folders, recovery, full identity and production MRK-18 acceptance remain gated. Use `--editor-fixture` for the historical sample editor, including with `--static-calculator` or `--large-document`.
+The default launch now creates and reopens app-owned collection folders and UTF-8 documents with autosave. See [the storage contract and limitations](../../docs/native-collections-validation.md). External folders, full identity, crash-before-checkpoint recovery and production MRK-18 acceptance remain gated. Use `--editor-fixture` for the historical sample editor, including with `--static-calculator` or `--large-document`.
+
+MRK-39 extracts `EditorModel` unchanged into a Foundation/Observation source shared with the separate native macOS collection workspace. Its storage/lifecycle corpus also runs through `spikes/Package.swift` on macOS. The current iOS native/model/decoder shard passes 91 tests with zero failures/skips/result-bundle runtime warnings. The current UI regression remains open after an unfinalized bounded full-run attempt; the prior MRK-38 114-pass checkpoint below is historical evidence. See [the shared-core and desktop evidence](../../docs/native-macos-collections-validation.md).
 
 ## Native Save As checkpoint
 
