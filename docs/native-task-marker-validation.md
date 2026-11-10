@@ -22,7 +22,7 @@ Further lightweight source review identified an unverified UIKit refusal path: t
 
 ## Planned verification
 
-Shared tests cover exact BOM/NFD/emoji/mixed-ending bytes, caret ownership, batch states, invalid syntax/selection and resource boundaries, plus stale source/selection refusal. The AppKit runner adds actual local menu targets, caret/batch output, native source/model selection and focus, separate typing/edit undo-redo, guard refusals, normal autosave and settled full-source conflict recovery across edit/undo/redo, including undo to previously saved bytes while the on-disk file diverges. The UIKit detached/scope case is authored for compilation only. All existing regressions and bounded unsigned Mac/iOS test-bundle builds will run serially after capacity checks.
+Shared tests cover exact BOM/NFD/emoji/mixed-ending bytes, caret ownership, batch states, invalid syntax/selection and resource boundaries, plus stale source/selection refusal. The AppKit runner adds actual local menu targets, caret/batch output, native source/model selection and focus, separate typing/edit undo-redo, guard refusals with exact before/after source/native-selection/report/focus/composition/undo snapshots and fresh matching-plan controls for composition/multiple selections (avoiding stale-plan refusals masking those guards), normal autosave and settled full-source conflict recovery across edit/undo/redo, including undo to previously saved bytes while the on-disk file diverges. The UIKit detached/scope case is authored for compilation only. All existing regressions and bounded unsigned Mac/iOS test-bundle builds will run serially after capacity checks.
 
 ## Preserved gates
 

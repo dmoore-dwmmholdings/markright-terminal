@@ -39,6 +39,34 @@ private struct TaskMarkerFailure: Error, CustomStringConvertible {
     menu.performActionForItem(at: 0)
 }
 
+/// Exact owned-view state around a refused action. Text is compared as bytes,
+/// including reported model text; source-preserving caret/undo changes matter.
+private struct TaskRefusalSnapshot: Equatable {
+    let source: Data
+    let selections: [NSRange]
+    let reported: Data
+    let reportedSelection: NSRange
+    let focus: ObjectIdentifier?
+    let markedRange: NSRange
+    let canUndo: Bool
+    let canRedo: Bool
+    let undoName: String?
+    let redoName: String?
+
+    @MainActor init(text: MacSourceTextView, reported: String, reportedSelection: NSRange, window: NSWindow) {
+        source = Data(text.string.utf8)
+        selections = text.selectedRanges.map(\.rangeValue)
+        self.reported = Data(reported.utf8)
+        self.reportedSelection = reportedSelection
+        focus = window.firstResponder.map { ObjectIdentifier($0) }
+        markedRange = text.markedRange()
+        canUndo = text.undoManager?.canUndo ?? false
+        canRedo = text.undoManager?.canRedo ?? false
+        undoName = text.undoManager?.undoActionName
+        redoName = text.undoManager?.redoActionName
+    }
+}
+
 @MainActor private func taskMarkerNativeEditing() async throws {
     let source = "\u{FEFF}- [ ] Cafe\u{301} 😀\r\n  + [X]\tsecond\r\n \t\n* [x] third\r"
     let checked = "\u{FEFF}- [x] Cafe\u{301} 😀\r\n  + [X]\tsecond\r\n \t\n* [x] third\r"
@@ -62,6 +90,12 @@ private struct TaskMarkerFailure: Error, CustomStringConvertible {
     guard let text = taskSource(host) else { throw TaskMarkerFailure("Task source absent") }
     try taskRequire(window.makeFirstResponder(text), "Cannot focus task source")
     let undo = undoDelegate.manager, caret = NSRange(location: 10, length: 0)
+    func requireRefusalState(_ label: String, _ action: () throws -> Void) throws {
+        let before = TaskRefusalSnapshot(text: text, reported: reported, reportedSelection: reportedSelection, window: window)
+        try action()
+        let after = TaskRefusalSnapshot(text: text, reported: reported, reportedSelection: reportedSelection, window: window)
+        try taskRequire(before == after, label + " changed source, selection/report, focus, composition or native undo state")
+    }
     text.setSelectedRange(caret)
     try taskChoose(text)
     try taskRequire(SourceSelection.sameText(text.string, checked) && SourceSelection.sameText(reported, checked) &&
@@ -88,37 +122,65 @@ private struct TaskMarkerFailure: Error, CustomStringConvertible {
     try taskRequire(SourceSelection.sameText(text.string, source), "Task undo did not remain separate from typing")
     undo.redo(); undo.redo(); undo.undo(); undo.undo()
     text.setSelectedRange(caret)
-    let staleCaret = NSMenu(); staleCaret.autoenablesItems = false; staleCaret.addItem(text.makeTaskMarkerItem())
-    text.setSelectedRange(NSRange(location: caret.location + 1, length: 0)); staleCaret.performActionForItem(at: 0)
+    let staleCaretItem = text.makeTaskMarkerItem()
+    try taskRequire(staleCaretItem.isEnabled, "Stale-caret task control was not initially available")
+    let staleCaret = NSMenu(); staleCaret.autoenablesItems = false; staleCaret.addItem(staleCaretItem)
+    text.setSelectedRange(NSRange(location: caret.location + 1, length: 0))
+    try requireRefusalState("Retained stale-caret task action") { staleCaret.performActionForItem(at: 0) }
     try taskRequire(SourceSelection.sameText(text.string, source), "Retained task action ignored stale caret")
     text.setSelectedRange(caret)
-    let staleSource = NSMenu(); staleSource.autoenablesItems = false; staleSource.addItem(text.makeTaskMarkerItem())
+    let staleSourceItem = text.makeTaskMarkerItem()
+    try taskRequire(staleSourceItem.isEnabled, "Stale-source task control was not initially available")
+    let staleSource = NSMenu(); staleSource.autoenablesItems = false; staleSource.addItem(staleSourceItem)
     undo.beginUndoGrouping(); text.insertText("tail", replacementRange: NSRange(location: source.utf16.count, length: 0)); undo.endUndoGrouping()
-    text.setSelectedRange(caret); staleSource.performActionForItem(at: 0)
+    text.setSelectedRange(caret)
+    try requireRefusalState("Retained stale-source task action") { staleSource.performActionForItem(at: 0) }
     try taskRequire(SourceSelection.sameText(text.string, source + "tail"), "Retained task action ignored stale source")
     undo.undo(); text.setSelectedRange(caret)
     guard let plan = TaskMarkerEdit.make(source: source, selection: caret) else { throw TaskMarkerFailure("Task guard plan absent") }
     text.isEditable = false
+    try taskRequire(window.makeFirstResponder(text) && plan.matches(source: text.string, selection: text.selectedRange()),
+                    "Read-only task control lost matching plan or source focus")
     let inactiveItem = text.makeTaskMarkerItem(), inactiveMenu = NSMenu()
     inactiveMenu.addItem(inactiveItem); inactiveMenu.update()
     try taskRequire(!inactiveItem.isEnabled, "Automatic root menu validation enabled a refused task edit")
-    try taskRequire(!text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(plan), "Read-only task action accepted")
+    try requireRefusalState("Read-only task action") {
+        try taskRequire(!text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(plan), "Read-only task action accepted")
+    }
     text.isEditable = true
-    try taskRequire(window.makeFirstResponder(sentinel), "Cannot prepare non-source task focus")
-    try taskRequire(!text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(plan) && window.firstResponder === sentinel,
-                    "Task action took non-source focus")
+    try taskRequire(window.makeFirstResponder(sentinel) && plan.matches(source: text.string, selection: text.selectedRange()),
+                    "Cannot prepare non-source task focus with a matching plan")
+    try requireRefusalState("Non-source-focus task action") {
+        try taskRequire(!text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(plan) && window.firstResponder === sentinel,
+                        "Task action took non-source focus")
+    }
     try taskRequire(window.makeFirstResponder(text), "Cannot restore task focus")
-    text.setSelectedRanges([NSValue(range: caret), NSValue(range: NSRange(location: 1, length: 2))], affinity: .downstream, stillSelecting: false)
-    try taskRequire(text.selectedRanges.count == 2 && !text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(plan), "Multiple-selection task action accepted")
+    let secondTaskRow = (source as NSString).range(of: "  + [X]\tsecond")
+    text.setSelectedRanges([NSValue(range: caret), NSValue(range: secondTaskRow)], affinity: .downstream, stillSelecting: false)
+    guard let multiplePlan = TaskMarkerEdit.make(source: text.string, selection: text.selectedRange()) else {
+        throw TaskMarkerFailure("Multiple-selection task control lacks a valid current primary-row plan")
+    }
+    try taskRequire(multiplePlan.matches(source: text.string, selection: text.selectedRange()), "Multiple-selection task control is stale")
+    try requireRefusalState("Multiple-selection task action") {
+        try taskRequire(text.selectedRanges.count == 2 && !text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(multiplePlan), "Multiple-selection task action accepted")
+    }
     text.setSelectedRange(caret); text.breakUndoCoalescing(); undo.removeAllActions(); undo.groupsByEvent = true
     text.setMarkedText("仮", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
-    try taskRequire(text.hasMarkedText() && !text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(plan), "Task action ended or edited composition")
+    guard let markedPlan = TaskMarkerEdit.make(source: text.string, selection: text.selectedRange()) else {
+        throw TaskMarkerFailure("Composing task control lacks a valid current-row plan")
+    }
+    try taskRequire(markedPlan.matches(source: text.string, selection: text.selectedRange()), "Composing task control is stale")
+    try requireRefusalState("Composing task action") {
+        try taskRequire(text.hasMarkedText() && !text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(markedPlan), "Task action ended or edited composition")
+    }
     text.unmarkText()
     // Restore only owned synthetic text before testing detached controls.
     text.string = source; text.setSelectedRange(caret)
     try taskRequire(text.makeTaskMarkerItem().isEnabled, "Task detached positive control failed")
     host.removeFromSuperview()
-    try taskRequire(text.window == nil && !text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(plan), "Detached task action accepted")
+    try requireRefusalState("Detached task action") {
+        try taskRequire(text.window == nil && !text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(plan), "Detached task action accepted")
+    }
     try taskRequire(!window.isVisible && !NSApplication.shared.isActive, "Task probe activated/showed a window")
 }
 
