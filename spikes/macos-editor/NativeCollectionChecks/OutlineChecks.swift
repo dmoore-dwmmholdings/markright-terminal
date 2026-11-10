@@ -103,9 +103,14 @@ private struct OutlineCheckFailure: Error, CustomStringConvertible {
     try outlineRequire(window.makeFirstResponder(sentinel), "Cannot prepare non-source focus control")
     try outlineRequire(!text.applyHeadingNavigation(current) && window.firstResponder === sentinel, "Outline stole non-source focus")
     try outlineRequire(window.makeFirstResponder(text), "Cannot restore outline source focus")
-    text.selectedRanges = [NSValue(range: .init(location: 1, length: 0)), NSValue(range: .init(location: 4, length: 0))]
-    try outlineRequire(text.selectedRanges.count == 2 && !text.applyHeadingNavigation(current), "Multiple-selection outline action accepted or control unavailable")
+    text.setSelectedRanges([NSValue(range: NSRange(location: 1, length: 1)), NSValue(range: NSRange(location: 4, length: 1))],
+                           affinity: .downstream, stillSelecting: false)
+    try outlineRequire(text.selectedRanges.count == 2, "Multiple-selection outline positive control failed")
+    let multiplePlan = try currentPlan()
+    try outlineRequire(!text.applyHeadingNavigation(multiplePlan), "Multiple-selection outline action accepted")
     text.setSelectedRange(.init(location: text.string.utf16.count, length: 0))
+    text.breakUndoCoalescing()
+    undo.removeAllActions()
     undo.groupsByEvent = true
     text.setMarkedText("仮", selectedRange: .init(location: 1, length: 0), replacementRange: .init(location: NSNotFound, length: 0))
     try outlineRequire(text.hasMarkedText(), "Outline marked-text positive control failed")
@@ -157,13 +162,19 @@ private struct OutlineSnapshot: Equatable {
     }
     try await outlineWait("outline workspace source") { host.layoutSubtreeIfNeeded(); return !workspace.isBusy && outlineFind(host) != nil }
     guard let text = outlineFind(host) else { throw OutlineCheckFailure("Workspace source missing") }
+    try await outlineWait("editable outline workspace") { host.layoutSubtreeIfNeeded(); return text.isEditable }
     try outlineRequire(window.makeFirstResponder(text), "Cannot focus workspace source")
     let generation = session.model.editingGeneration, revision = session.model.sourceRevision
     let cleanBytes = try OutlineSnapshot(root: root)
-    text.makeOutlineMenu().performActionForItem(at: 1)
+    let cleanOutline = SourceOutline.make(source: text.string)
+    let cleanMenu = text.makeOutlineMenu()
+    try outlineRequire(cleanOutline.headings.count == 2 && cleanMenu.items.count == 2 &&
+        cleanMenu.items.allSatisfy(\.isEnabled), "Clean outline menu is not ready")
+    cleanMenu.performActionForItem(at: 1)
     try await Task.sleep(for: .milliseconds(650))
     let cleanAfter = try OutlineSnapshot(root: root)
     try outlineRequire(cleanBytes == cleanAfter && session.model.sourceRevision == revision &&
+        text.selectedRange() == cleanOutline.headings[1].range &&
         session.model.editingGeneration == generation && session.model.documentSelection == text.selectedRange(),
         "Clean outline changed disk/source generation or failed to report selection")
     let file = root.appendingPathComponent("Editing/Outline.md")
