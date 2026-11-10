@@ -17,6 +17,12 @@ MRK-39 passes **58 shared storage/session tests +5 focused AppKit groups**, with
 
 The bundled fixture now includes read-only Reading mode. All 12 scoped offscreen groups pass in `build/reading-mode-native-20261110.log`, including immediate preview refresh, delivered-paste refusal and exact source/reverse selection retention. Separate browser checks pass 33/skip 1; all 87 Node groups pass. `build/reading-mode-host-20261110.log` records the unsigned warnings-as-errors build into the unused separate Verification product. The visible Debug app/tabs were preserved. The first attempt's below 20 GiB resource stop is retained; after cleanup about 47 GiB allowed sequential verification. These are scoped UI-policy checks, not OS keyboard/clipboard/VoiceOver or network-isolation acceptance. See desktop README/ADR0002 for limits.
 
+## Native list insertion
+
+MRK-44 adds **Bulleted list**, **Numbered list** and **Task list** to the native source context menu. It preserves exact complete-row text, BOM position, mixed endings and blank rows. Numbering counts nonblank rows. Empty-line starters select `item`; a caret before existing text inserts only a marker. Partial-line selections are refused. The commands do not parse/toggle existing lists, implement autoindent or add interactive checkboxes.
+
+All 134 shared tests and 15 focused AppKit/Transferable groups pass. The new native group checks real menu actions, transformed selections, existing-line carets, selected placeholders, separately undoable typing and exact insertion undo/redo. The unsigned Verification app builds with warnings as errors. The prior Link/TextKit diagnostic and actual OS keyboard/menu/IME/VoiceOver acceptance remain open. See [the contract and evidence](../../docs/native-markdown-list-validation.md).
+
 ## Link, image-reference and code-block insertion
 
 MRK-43 adds **Link**, **Image reference** and **Code block** to the same native source context menu. Templates keep selected label/alt text and select a destination placeholder; code fences preserve literal selected contents and physical endings. No reference resolution, image import, file picker or new native dialog is added.
