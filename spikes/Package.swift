@@ -17,7 +17,9 @@ let package = Package(
                 "DeclarativeDecoder.swift",
                 "Editor.swift",
                 "RecoveryWorkspace.swift",
-                "SaveDocumentAsSheet.swift"
+                "SaveDocumentAsSheet.swift",
+                "SourceCopyTransfer.swift",
+                "SourceCopyExporter.swift"
             ],
             sources: [
                 "EditorModel.swift",
@@ -26,7 +28,8 @@ let package = Package(
                 "CollectionSearch.swift",
                 "CollectionSearchModel.swift",
                 "RecoveryDraft.swift",
-                "DocumentSession.swift"
+                "DocumentSession.swift",
+                "SourceCopyExport.swift"
             ]
         ),
         .testTarget(
@@ -47,7 +50,8 @@ let package = Package(
                 "RecoveryStoreTests.swift",
                 "RecoverySessionTests.swift",
                 "SaveAsSessionTests.swift",
-                "SaveAsStoreTests.swift"
+                "SaveAsStoreTests.swift",
+                "SourceCopyExportTests.swift"
             ]
         )
     ],

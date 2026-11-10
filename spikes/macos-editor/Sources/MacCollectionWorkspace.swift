@@ -5,6 +5,7 @@ import SwiftUI
 
 @MainActor @Observable final class MacCollectionWorkspaceModel {
     let store: CollectionStore
+    let sourceCopyExport = SourceCopyExportModel()
     private(set) var collections: [String] = []
     private(set) var selectedCollection: String?
     private(set) var documents: [String] = []
@@ -24,11 +25,11 @@ import SwiftUI
 
     var status: String { session?.status ?? (isBusy ? "Working…" : "Choose a document or create a collection.") }
     var canCloseNow: Bool {
-        !isBusy && !recoveryCloseRequested && !hasNamingDialog && (session?.canClose ?? true)
+        !isBusy && !recoveryCloseRequested && !hasNamingDialog && !sourceCopyExport.isPending && (session?.canClose ?? true)
     }
 
     private func begin() -> Bool {
-        guard !isBusy, !recoveryCloseRequested else { return false }
+        guard !isBusy, !recoveryCloseRequested, !sourceCopyExport.isPending else { return false }
         guard session?.model.composing != true else {
             errorMessage = "Finish typing before changing the workspace."
             return false
@@ -181,7 +182,7 @@ import SwiftUI
     }
 
     @discardableResult func prepareSaveAsDialog() -> Bool {
-        guard let session, !isBusy, !hasNamingDialog, !session.model.composing else { return false }
+        guard let session, !isBusy, !hasNamingDialog, !sourceCopyExport.isPending, !session.model.composing else { return false }
         session.prepareSaveAsDialog()
         hasNamingDialog = true
         return true
@@ -190,6 +191,11 @@ import SwiftUI
     func resumeAfterSaveAsDialog() {
         hasNamingDialog = false
         session?.resumeAfterSaveAsDialog()
+    }
+
+    @discardableResult func beginSourceCopyExport() -> Bool {
+        guard let session, !isBusy, !hasNamingDialog, !recoveryCloseRequested else { return false }
+        return sourceCopyExport.begin(session: session)
     }
 
     @discardableResult func saveAs(collection: String, name: String) async -> StoredDocument? {
@@ -251,7 +257,7 @@ import SwiftUI
 
     func prepareToClose() async -> Bool {
         // Refuse concurrent requests rather than replacing a pending decision.
-        guard !isBusy, !recoveryCloseRequested, !hasNamingDialog,
+        guard !isBusy, !recoveryCloseRequested, !hasNamingDialog, !sourceCopyExport.isPending,
               session?.model.composing != true,
               session?.isChangingDestination != true else {
             errorMessage = "Finish typing or the active operation before closing."
@@ -272,7 +278,7 @@ import SwiftUI
     func resolveRecoveryClose(keepRecovery: Bool) {
         guard recoveryCloseRequested, let closeDecision else { return }
         // Recheck the actual current revision, not the earlier sheet state.
-        let safe = keepRecovery && session?.prepareRecoveryClose() == true
+        let safe = keepRecovery && !sourceCopyExport.isPending && session?.prepareRecoveryClose() == true
         if safe, let current = session {
             if let draft = current.recoveryDraft {
                 recoveries.removeAll { $0.fileName == draft.fileName }
@@ -300,14 +306,15 @@ import SwiftUI
     private var closeInProgress = false
     private var closeAuthorized = false
 
-    init(model: MacCollectionWorkspaceModel) {
+    init(model: MacCollectionWorkspaceModel, allowsSourceCopyExportPresentation: Bool = true) {
         self.model = model
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 760),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "Markright collections · Native research"
         window.isReleasedWhenClosed = false
         super.init(window: window)
-        window.contentViewController = NSHostingController(rootView: MacCollectionWorkspace(model: model))
+        window.contentViewController = NSHostingController(rootView: MacCollectionWorkspace(
+            model: model, allowsSourceCopyExportPresentation: allowsSourceCopyExportPresentation))
         window.delegate = self
         window.center()
     }
@@ -320,7 +327,9 @@ import SwiftUI
             closeAuthorized = false
             return false
         }
-        guard !closeInProgress else { return false }
+        // Refuse this close at the time it is requested. Otherwise the queued
+        // task could start after export completion and act on a stale close.
+        guard !closeInProgress, !model.sourceCopyExport.isPending else { return false }
         closeInProgress = true
         Task { [weak self] in
             guard let self else { return }
@@ -362,6 +371,9 @@ import SwiftUI
     static let shared = MacCollectionWorkspaceManager()
     private(set) var controller: MacCollectionWorkspaceWindowController?
     var canCloseNow: Bool { controller?.model.canCloseNow ?? true }
+    var hasPendingSourceCopyExport: Bool { controller?.model.sourceCopyExport.isPending ?? false }
+
+    init(controller: MacCollectionWorkspaceWindowController? = nil) { self.controller = controller }
 
     // No directory resolution, store access, or native windows at app launch.
     func openWorkspace() {
@@ -397,14 +409,31 @@ import SwiftUI
 
 @MainActor final class MarkrightMacApplicationDelegate: NSObject, NSApplicationDelegate {
     private var terminationPending = false
+    private let workspaceManager: MacCollectionWorkspaceManager
+    private let reply: @MainActor (NSApplication, Bool) -> Void
+
+    override convenience init() {
+        self.init(workspaceManager: .shared) { sender, safe in sender.reply(toApplicationShouldTerminate: safe) }
+    }
+
+    // The private probe injects its own manager and inert reply, so it never
+    // opens the real collection root or replies to a real termination request.
+    init(workspaceManager: MacCollectionWorkspaceManager,
+         reply: @escaping @MainActor (NSApplication, Bool) -> Void) {
+        self.workspaceManager = workspaceManager
+        self.reply = reply
+        super.init()
+    }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard !terminationPending else { return .terminateCancel }
+        // Refuse at request time, before a queued task can observe a completed
+        // export and unexpectedly act on this earlier quit attempt.
+        guard !terminationPending, !workspaceManager.hasPendingSourceCopyExport else { return .terminateCancel }
         terminationPending = true
         Task {
-            let safe = await MacCollectionWorkspaceManager.shared.prepareToTerminate()
+            let safe = await workspaceManager.prepareToTerminate()
             terminationPending = false
-            sender.reply(toApplicationShouldTerminate: safe && MacCollectionWorkspaceManager.shared.canCloseNow)
+            reply(sender, safe && workspaceManager.canCloseNow)
         }
         return .terminateLater
     }
@@ -424,6 +453,7 @@ private enum MacNamingPurpose: String, Identifiable {
 
 struct MacCollectionWorkspace: View {
     @Bindable var model: MacCollectionWorkspaceModel
+    var allowsSourceCopyExportPresentation = true
     @State private var naming: MacNamingPurpose?
     @State private var preview: RecoveryDraft?
 
@@ -436,6 +466,12 @@ struct MacCollectionWorkspace: View {
                 Text(model.status).font(.body).accessibilityIdentifier("mac-document-status")
                 if let message = model.operationMessage { Text(message).font(.body).textSelection(.enabled) }
                 if let error = model.errorMessage { Text(error).font(.body).foregroundStyle(.red).textSelection(.enabled) }
+                if let message = model.sourceCopyExport.message {
+                    Text(message).font(.body).textSelection(.enabled).accessibilityIdentifier("source-copy-export-message")
+                }
+                if model.sourceCopyExport.isPending {
+                    Text("Choose where to export the source copy. You are still editing the original document.").font(.body)
+                }
             }.padding()
             Divider()
             HSplitView {
@@ -445,11 +481,20 @@ struct MacCollectionWorkspace: View {
         }
         .frame(minWidth: 700, minHeight: 520)
         .toolbar {
-            Button("New collection") { naming = .collection }.disabled(model.isBusy || model.session?.model.composing == true)
-            Button("New document") { naming = .document }.disabled(model.isBusy || model.selectedCollection == nil || model.session?.model.composing == true)
+            Button("New collection") { naming = .collection }.disabled(model.isBusy || model.sourceCopyExport.isPending || model.session?.model.composing == true)
+            Button("New document") { naming = .document }.disabled(model.isBusy || model.sourceCopyExport.isPending || model.selectedCollection == nil || model.session?.model.composing == true)
             Button("Save as…") { if model.prepareSaveAsDialog() { naming = .saveAs } }
-                .disabled(model.isBusy || model.session == nil || model.session?.model.composing == true)
-            Button("Refresh") { Task { await model.refresh() } }.disabled(model.isBusy)
+                .disabled(model.isBusy || model.sourceCopyExport.isPending || model.session == nil || model.session?.model.composing == true)
+            Button("Export source copy…") { model.beginSourceCopyExport() }
+                .accessibilityIdentifier("export-source-copy")
+                .disabled(model.isBusy || model.hasNamingDialog || model.recoveryCloseRequested || model.sourceCopyExport.isPending ||
+                          model.session == nil || model.session?.model.composing == true || model.session?.isChangingDestination == true)
+            Button("Refresh") { Task { await model.refresh() } }.disabled(model.isBusy || model.sourceCopyExport.isPending)
+        }
+        .background {
+            if allowsSourceCopyExportPresentation, let request = model.sourceCopyExport.request {
+                SourceCopyExporter(request: request, model: model.sourceCopyExport).id(request.id)
+            }
         }
         .task { await model.refresh() }
         .sheet(item: $naming, onDismiss: { model.resumeAfterSaveAsDialog() }) { purpose in
@@ -513,7 +558,7 @@ struct MacCollectionWorkspace: View {
                 }
             }.font(.body).buttonStyle(.borderless).padding()
                 .fixedSize(horizontal: false, vertical: true)
-        }.disabled(model.isBusy || model.session?.model.composing == true)
+        }.disabled(model.isBusy || model.sourceCopyExport.isPending || model.session?.model.composing == true)
     }
 
     @ViewBuilder private var source: some View {

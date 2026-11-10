@@ -37,17 +37,31 @@ def main():
             "CFBundleExecutable": "NativeCollectionChecks",
             "CFBundlePackageType": "APPL",
             "LSUIElement": True,
+            "UTImportedTypeDeclarations": [{
+                "UTTypeIdentifier": "net.daringfireball.markdown",
+                "UTTypeDescription": "Markdown source",
+                "UTTypeConformsTo": ["public.utf8-plain-text"],
+                "UTTypeTagSpecification": {"public.filename-extension": ["md"]},
+            }],
+            "UTExportedTypeDeclarations": [{
+                "UTTypeIdentifier": "com.dwmm.markright.spike.source",
+                "UTTypeDescription": "Markright source",
+                "UTTypeConformsTo": ["public.plain-text"],
+                "UTTypeTagSpecification": {"public.filename-extension": ["mrk"]},
+            }],
         }, stream)
     shared = DIRECTORY.parent / "ios-editor" / "Sources"
     sources = [shared / name for name in (
         "CollectionStore.swift", "RecoveryDraft.swift", "DocumentSession.swift",
         "SourceSelection.swift", "EditorModel.swift",
         "CollectionSearch.swift", "CollectionSearchModel.swift", "CollectionSearchPanel.swift",
+        "SourceCopyExport.swift", "SourceCopyTransfer.swift", "SourceCopyExporter.swift",
     )] + [
         DIRECTORY / "Sources" / "MacSourceEditor.swift",
         DIRECTORY / "Sources" / "MacCollectionWorkspace.swift",
         DIRECTORY / "NativeCollectionChecks" / "main.swift",
         DIRECTORY / "NativeCollectionChecks" / "SearchChecks.swift",
+        DIRECTORY / "NativeCollectionChecks" / "ExportChecks.swift",
     ]
     require_headroom()
     subprocess.run([

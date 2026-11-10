@@ -22,6 +22,9 @@ targets:
       - path: ../ios-editor/Sources/CollectionStore.swift
       - path: ../ios-editor/Sources/RecoveryDraft.swift
       - path: ../ios-editor/Sources/DocumentSession.swift
+      - path: ../ios-editor/Sources/SourceCopyExport.swift
+      - path: ../ios-editor/Sources/SourceCopyTransfer.swift
+      - path: ../ios-editor/Sources/SourceCopyExporter.swift
       - path: Resources/Editor
         type: folder
         buildPhase: resources
@@ -31,6 +34,21 @@ targets:
         PRODUCT_NAME: MarkrightMacEditorSpike
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         INFOPLIST_KEY_CFBundleDisplayName: Markright macOS research
+    info:
+      path: build/Generated-Info.plist
+      properties:
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: net.daringfireball.markdown
+            UTTypeDescription: Markdown source
+            UTTypeConformsTo: [public.utf8-plain-text]
+            UTTypeTagSpecification:
+              public.filename-extension: [md]
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.dwmm.markright.spike.source
+            UTTypeDescription: Markright source
+            UTTypeConformsTo: [public.plain-text]
+            UTTypeTagSpecification:
+              public.filename-extension: [mrk]
 schemes:
   MarkrightMacEditorSpike:
     build:

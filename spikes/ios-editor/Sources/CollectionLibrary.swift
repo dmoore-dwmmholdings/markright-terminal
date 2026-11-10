@@ -206,9 +206,11 @@ private struct DocumentWorkspace: View {
     @Bindable var session: DocumentSession
     let collections: [String]
     let create: @Sendable (String, String, String) async throws -> StoredDocument
+    var allowsSourceCopyExportPresentation = true
     let close: () -> Void
     @State private var closing = false
     @State private var namingDestination = false
+    @State private var sourceCopyExport = SourceCopyExportModel()
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private var actionLayout: AnyLayout {
         dynamicTypeSize > .large ? AnyLayout(VStackLayout(alignment: .leading)) : AnyLayout(HStackLayout())
@@ -218,25 +220,44 @@ private struct DocumentWorkspace: View {
             VStack(alignment: .leading) {
                 actionLayout {
                     Button("Close") {
+                        guard !sourceCopyExport.isPending else { return }
                         closing = true
-                        Task { if await session.flush() { close() }; closing = false }
+                        Task { if await session.flush(), !sourceCopyExport.isPending { close() }; closing = false }
                     }.foregroundStyle(.primary).frame(minHeight: 44)
                     .accessibilityLabel("Close document").accessibilityIdentifier("close-document")
-                    .disabled(closing || session.model.composing || session.isChangingDestination)
-                    Button { session.prepareSaveAsDialog(); namingDestination = true } label: {
+                    .disabled(closing || sourceCopyExport.isPending || session.model.composing || session.isChangingDestination)
+                    Button {
+                        guard !sourceCopyExport.isPending else { return }
+                        session.prepareSaveAsDialog()
+                        namingDestination = true
+                    } label: {
                         Text("Save as").fixedSize(horizontal: false, vertical: true)
                     }.foregroundStyle(.primary).frame(minHeight: 44)
                     .accessibilityLabel("Save as new document").accessibilityIdentifier("save-as-document")
-                    .disabled(closing || session.model.composing || session.isChangingDestination)
+                    .disabled(closing || sourceCopyExport.isPending || session.model.composing || session.isChangingDestination)
+                    Button("Export source copy") {
+                        guard !closing, !namingDestination, !session.isChangingDestination else { return }
+                        sourceCopyExport.begin(session: session)
+                    }.foregroundStyle(.primary).frame(minHeight: 44)
+                    .accessibilityIdentifier("export-source-copy")
+                    .disabled(closing || namingDestination || sourceCopyExport.isPending || session.model.composing || session.isChangingDestination)
                 }
                 Text(session.status).accessibilityIdentifier("document-save-status")
+                if let message = sourceCopyExport.message {
+                    Text(message).accessibilityIdentifier("source-copy-export-message")
+                }
+                if sourceCopyExport.isPending {
+                    Text("Choose where to export the source copy. You are still editing the original document.")
+                }
                 if let recoveryStatus = session.recoveryStatus {
                     Text(recoveryStatus).accessibilityIdentifier("document-recovery-status")
                 }
                 if session.canKeepRecovery && !session.canClose {
                     Button("Close with recovery copy") {
+                        guard !sourceCopyExport.isPending else { return }
                         if session.prepareRecoveryClose() { close() }
                     }.foregroundStyle(.primary).frame(minHeight: 44).accessibilityIdentifier("close-with-recovery")
+                        .disabled(sourceCopyExport.isPending)
                 }
                 if session.errorMessage != nil || session.document.durabilityWarning != nil {
                     Button("Retry save") { Task { _ = await session.flush() } }.foregroundStyle(.primary).frame(minHeight: 44).accessibilityIdentifier("retry-save")
@@ -244,7 +265,12 @@ private struct DocumentWorkspace: View {
             }.font(.body).frame(maxWidth: .infinity, alignment: .leading).padding()
             EditorScreen(model: session.model, title: session.document.name, onEdit: { session.scheduleSave() })
         }
-        .interactiveDismissDisabled(!session.canClose)
+        .interactiveDismissDisabled(!session.canClose || sourceCopyExport.isPending)
+        .background {
+            if allowsSourceCopyExportPresentation, let request = sourceCopyExport.request {
+                SourceCopyExporter(request: request, model: sourceCopyExport).id(request.id)
+            }
+        }
         .sheet(isPresented: $namingDestination, onDismiss: { session.resumeAfterSaveAsDialog() }) {
             SaveDocumentAsSheet(session: session, collections: collections, create: create) { namingDestination = false }
         }

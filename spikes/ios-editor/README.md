@@ -6,6 +6,12 @@ The default launch now creates and reopens app-owned collection folders and UTF-
 
 MRK-39 extracts `EditorModel` unchanged into a Foundation/Observation source shared with the separate native macOS collection workspace. Its storage/lifecycle corpus also runs through `spikes/Package.swift` on macOS. At the MRK-39 checkpoint, the iOS native/model/decoder shard passed 91 tests with zero failures/skips/result-bundle runtime warnings. Its workflow shard had 10 UI passes and one recovery-input failure; a full attempt remained unfinalized. Isolated diagnostic runs were blocked first by process exhaustion and then by unexplained boot error22 despite device/runtime availability. The stricter recovery harness now fails before termination unless exact source/current-checkpoint prerequisites hold, retains input diagnostics, and adds typing across the error-header transition without refocusing. It compiles with warnings-as-errors; its selected runtime cases have not run. Current UI acceptance remains open; the prior MRK-38 114-pass checkpoint below is historical evidence. See [the shared-core and desktop evidence](../../docs/native-macos-collections-validation.md).
 
+## Source-copy export checkpoint
+
+MRK-41 adds **Export source copy** for the current in-memory source, including unsaved edits. A bounded immutable UTF-8 snapshot goes to the OS user-selected destination; editing remains in the original document, with its baseline, dirty state and recovery checkpoint unchanged. Assets/includes remain source references. Pending requests guard close and Save As; stale callbacks cannot complete a newer request.
+
+The iOS app and test targets compile with warnings as errors at `build/MRK41-native-ios-build-20261110.log`, without booting or launching a simulator. All 102 shared Mac tests and 10 authored AppKit/Transferable groups pass. Actual OS export/provider interaction, iOS runtime and the existing recovery-input and boot error 22 gates remain open. See [the contract and evidence](../../docs/native-source-copy-export-validation.md).
+
 ## Saved-source search checkpoint
 
 MRK-40 adds an explicit **Search saved documents** panel for the selected app-owned collection. It scans saved source, never unsaved editor text or recovery journals, with bounded literal previews, cancellation and visible limits/errors. Opening a result uses the existing fresh-open workflow; no old match range is applied. Query controls disable prose transformations and retire callbacks before teardown.
