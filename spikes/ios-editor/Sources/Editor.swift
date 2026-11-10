@@ -3,12 +3,45 @@ import UIKit
 
 @MainActor final class SourceTextView: UITextView {
     var focusesOnAttachment = true
+    var allowsMarkdownInsertion = true
     override func didMoveToWindow() {
         super.didMoveToWindow()
         guard window != nil && focusesOnAttachment else { return }
         focusesOnAttachment = false
         becomeFirstResponder()
         scrollRangeToVisible(selectedRange)
+    }
+
+    func makeMarkdownMenu() -> UIMenu {
+        guard allowsMarkdownInsertion else { return UIMenu(title: "Insert Markdown", children: []) }
+        let available = window != nil && isFirstResponder && isEditable && markedTextRange == nil && selectedRanges.count == 1
+        let actions = MarkdownInsertionCommand.allCases.map { command in
+            let plan = available ? MarkdownInsertionPlan.make(command: command, source: text, selection: selectedRange) : nil
+            return UIAction(title: command.title, attributes: plan == nil ? [.disabled] : []) { [weak self, plan] _ in
+                guard let self, let plan else { return }
+                self.applyMarkdownInsertion(plan)
+            }
+        }
+        return UIMenu(title: "Insert Markdown", children: actions)
+    }
+
+    @discardableResult func applyMarkdownInsertion(_ plan: MarkdownInsertionPlan) -> Bool {
+        guard allowsMarkdownInsertion, window != nil, isFirstResponder, isEditable, markedTextRange == nil, selectedRanges.count == 1,
+              plan.matches(source: text, selection: selectedRange) else { return false }
+        let expected = (plan.source as NSString).replacingCharacters(in: plan.range, with: plan.replacement)
+        let undo = undoManager
+        undo?.beginUndoGrouping()
+        defer { undo?.endUndoGrouping() }
+        // The validated current selection is exactly the captured replacement
+        // range. Native insertion owns undo and text-system notifications.
+        insertText(plan.replacement)
+        guard SourceSelection.sameText(text, expected), SourceSelection.isValid(plan.selectionAfter, in: text) else { return false }
+        selectedRange = plan.selectionAfter
+        undo?.setActionName("Insert Markdown")
+        // UIKit programmatic input paths need not deliver every delegate event.
+        // Reuse the existing reporter for exact source and the final selection.
+        (delegate as? NativeSourceEditor.Coordinator)?.report(self)
+        return true
     }
 }
 
@@ -21,6 +54,7 @@ struct NativeSourceEditor: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(onChange: onChange) }
     func makeUIView(context: Context) -> UITextView {
         let view = SourceTextView()
+        view.allowsMarkdownInsertion = wholeDocument
         view.font = UIFont.preferredFont(forTextStyle: .body)
         view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .secondarySystemBackground
@@ -41,6 +75,7 @@ struct NativeSourceEditor: UIViewRepresentable {
     }
     func updateUIView(_ view: UITextView, context: Context) {
         context.coordinator.onChange = onChange
+        (view as? SourceTextView)?.allowsMarkdownInsertion = wholeDocument
         Self.apply(value, selection: selection, to: view)
     }
     static func apply(_ value: String, selection: NSRange, to view: UITextView) {
@@ -70,9 +105,21 @@ struct NativeSourceEditor: UIViewRepresentable {
             onChange(textView.text, false, textView.selectedRange)
         }
         func textViewDidEndEditing(_ textView: UITextView) { finishComposition(textView) }
-        func textViewDidChange(_ textView: UITextView) { onChange(textView.text, textView.markedTextRange != nil, textView.selectedRange) }
+        func report(_ textView: UITextView) { onChange(textView.text, textView.markedTextRange != nil, textView.selectedRange) }
+        func textViewDidChange(_ textView: UITextView) { report(textView) }
         func textViewDidChangeSelection(_ textView: UITextView) {
-            onChange(textView.text, textView.markedTextRange != nil, textView.selectedRange)
+            report(textView)
+        }
+        func textView(_ textView: UITextView, editMenuForTextIn range: NSRange,
+                      suggestedActions: [UIMenuElement]) -> UIMenu? {
+            // On iOS 26 UIKit falls back to this method with a union range when
+            // the newer multi-range delegate method is absent. Refuse both a
+            // multi-selection and any range differing from the real selection.
+            guard let source = textView as? SourceTextView else { return nil }
+            guard source.allowsMarkdownInsertion else { return UIMenu(children: suggestedActions) }
+            guard source.selectedRanges.count == 1,
+                  range == source.selectedRange else { return nil }
+            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu()])
         }
     }
 }

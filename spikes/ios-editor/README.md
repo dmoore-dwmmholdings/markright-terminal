@@ -6,6 +6,12 @@ The default launch now creates and reopens app-owned collection folders and UTF-
 
 MRK-39 extracts `EditorModel` unchanged into a Foundation/Observation source shared with the separate native macOS collection workspace. Its storage/lifecycle corpus also runs through `spikes/Package.swift` on macOS. At the MRK-39 checkpoint, the iOS native/model/decoder shard passed 91 tests with zero failures/skips/result-bundle runtime warnings. Its workflow shard had 10 UI passes and one recovery-input failure; a full attempt remained unfinalized. Isolated diagnostic runs were blocked first by process exhaustion and then by unexplained boot error22 despite device/runtime availability. The stricter recovery harness now fails before termination unless exact source/current-checkpoint prerequisites hold, retains input diagnostics, and adds typing across the error-header transition without refocusing. It compiles with warnings-as-errors; its selected runtime cases have not run. Current UI acceptance remains open; the prior MRK-38 114-pass checkpoint below is historical evidence. See [the shared-core and desktop evidence](../../docs/native-macos-collections-validation.md).
 
+## Native Markdown insertion checkpoint
+
+MRK-42 adds **Insert Markdown → Bold / Italic / Inline code** to the native whole-document Source edit menu. Commands preserve literal selected text, select inserted bodies/placeholders, use native insertion/undo and refuse stale or composing views. Block editors retain their existing native suggested actions. These are source helpers, with no rich-text conversion or complete rendering claim.
+
+The iOS app and test targets compile with warnings as errors (`build/MRK42-native-ios-build-20261110.log`), including four focused UIKit refusal tests. They have not run on iOS. Shared Mac tests pass 113/0 and all 13 authored AppKit/Transferable groups pass. The recovery continuation regression confirms shared state only; simulator boot error 22 and original iOS input acceptance remain open. See [the contract and evidence](../../docs/native-markdown-insertion-validation.md).
+
 ## Source-copy export checkpoint
 
 MRK-41 adds **Export source copy** for the current in-memory source, including unsaved edits. A bounded immutable UTF-8 snapshot goes to the OS user-selected destination; editing remains in the original document, with its baseline, dirty state and recovery checkpoint unchanged. Assets/includes remain source references. Pending requests guard close and Save As; stale callbacks cannot complete a newer request.

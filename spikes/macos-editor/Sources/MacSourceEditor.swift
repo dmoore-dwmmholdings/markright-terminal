@@ -31,6 +31,77 @@ import SwiftUI
         super.unmarkText()
         onTextStateChanged?()
     }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        // AppKit first resolves the contextual selection. Copy its menu so a
+        // retained/cached native menu never accumulates plans from older clicks.
+        let menu = (super.menu(for: event)?.copy() as? NSMenu) ?? NSMenu()
+        if isEditable {
+            menu.addItem(.separator())
+            let item = NSMenuItem(title: "Insert Markdown", action: nil, keyEquivalent: "")
+            item.submenu = makeMarkdownMenu()
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    func makeMarkdownMenu() -> NSMenu {
+        let menu = NSMenu(title: "Insert Markdown")
+        menu.autoenablesItems = false
+        let available = window != nil && window?.firstResponder === self && isEditable &&
+            !hasMarkedText() && selectedRanges.count == 1
+        for command in MarkdownInsertionCommand.allCases {
+            let plan = available ? MarkdownInsertionPlan.make(command: command, source: string, selection: selectedRange()) : nil
+            menu.addItem(MacMarkdownInsertionMenuItem(title: command.title, sourceView: self, plan: plan))
+        }
+        return menu
+    }
+
+    @discardableResult func applyMarkdownInsertion(_ plan: MarkdownInsertionPlan) -> Bool {
+        guard let window, window.firstResponder === self, isEditable, !hasMarkedText(),
+              selectedRanges.count == 1, plan.matches(source: string, selection: selectedRange()) else { return false }
+        let expected = (plan.source as NSString).replacingCharacters(in: plan.range, with: plan.replacement)
+        breakUndoCoalescing()
+        let undo = undoManager
+        undo?.beginUndoGrouping()
+        defer { undo?.endUndoGrouping(); breakUndoCoalescing() }
+        insertText(plan.replacement, replacementRange: plan.range)
+        guard SourceSelection.sameText(string, expected), SourceSelection.isValid(plan.selectionAfter, in: string) else { return false }
+        setSelectedRange(plan.selectionAfter)
+        undo?.setActionName("Insert Markdown")
+        // Report through the same native coordinator as ordinary typing. AppKit
+        // normally emits both edit and final selection notifications as well.
+        onTextStateChanged?()
+        return true
+    }
+}
+
+/// NSMenuItem's target is weak. The retained item targets itself and holds only
+/// a weak view reference, so an old menu cannot retain or redirect an editor.
+@MainActor private final class MacMarkdownInsertionMenuItem: NSMenuItem {
+    private weak var sourceView: MacSourceTextView?
+    private let plan: MarkdownInsertionPlan?
+
+    init(title: String, sourceView: MacSourceTextView, plan: MarkdownInsertionPlan?) {
+        self.sourceView = sourceView
+        self.plan = plan
+        super.init(title: title, action: #selector(insertMarkdown(_:)), keyEquivalent: "")
+        target = self
+        isEnabled = plan != nil
+    }
+
+    required init(coder: NSCoder) {
+        plan = nil
+        super.init(coder: coder)
+        target = self
+        action = #selector(insertMarkdown(_:))
+        isEnabled = false
+    }
+
+    @objc private func insertMarkdown(_ sender: Any?) {
+        guard let plan else { return }
+        sourceView?.applyMarkdownInsertion(plan)
+    }
 }
 
 struct MacSourceEditor: NSViewRepresentable {

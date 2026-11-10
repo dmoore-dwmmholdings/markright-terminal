@@ -68,6 +68,59 @@ private actor RecoveryHarness {
         let events = await harness.recorded()
         XCTAssertEqual(events, ["checkpoint", "save"])
     }
+    func testTypingAfterFailedSavePreservesEditorGenerationCaretAndCurrentRecovery() async {
+        let harness = RecoveryHarness(); await harness.configure(saveFails: true)
+        let session = make(harness)
+        let model = session.model
+        model.showSource()
+        let identity = ObjectIdentifier(model)
+        let generation = model.editingGeneration
+        let originalBaseline = session.document.baseline
+        let originalSource = session.document.source
+        let prefix = "Re"
+        let prefixCaret = NSRange(location: prefix.utf16.count, length: 0)
+        model.updateDocumentSource(prefix, composing: false, generation: generation, selection: prefixCaret)
+
+        let firstSave = await session.flush()
+        XCTAssertFalse(firstSave)
+        XCTAssertTrue(session.status.hasPrefix("Could not save."))
+        XCTAssertEqual(ObjectIdentifier(session.model), identity)
+        XCTAssertEqual(model.editingGeneration, generation)
+        XCTAssertTrue(model.sourceMode)
+        XCTAssertEqual(model.documentSelection, prefixCaret)
+        XCTAssertEqual(Array(model.source.utf8), Array(prefix.utf8))
+        XCTAssertTrue(session.canKeepRecovery)
+        XCTAssertEqual(session.recoveryDraft.map { Array($0.source.utf8) }, Array(prefix.utf8))
+        XCTAssertEqual(session.document.baseline, originalBaseline)
+        XCTAssertEqual(Array(session.document.source.utf8), Array(originalSource.utf8))
+
+        // Continue through the same editor callback generation and saved caret.
+        // This exercises shared state only, not UIKit focus or input delivery.
+        let suffix = "covery -- \"notes\" and café\n"
+        let continued = (model.source as NSString).replacingCharacters(in: prefixCaret, with: suffix)
+        let expected = "Recovery -- \"notes\" and café\n"
+        let continuedCaret = NSRange(location: continued.utf16.count, length: 0)
+        model.updateDocumentSource(continued, composing: false, generation: generation, selection: continuedCaret)
+        XCTAssertEqual(Array(model.source.utf8), Array(expected.utf8))
+        XCTAssertEqual(model.documentSelection, continuedCaret)
+        XCTAssertFalse(session.canKeepRecovery)
+
+        let secondSave = await session.flush()
+        XCTAssertFalse(secondSave)
+        XCTAssertTrue(session.status.hasPrefix("Could not save."))
+        XCTAssertEqual(ObjectIdentifier(session.model), identity)
+        XCTAssertEqual(model.editingGeneration, generation)
+        XCTAssertTrue(model.sourceMode)
+        XCTAssertEqual(model.documentSelection, continuedCaret)
+        XCTAssertEqual(Array(model.source.utf8), Array(expected.utf8))
+        XCTAssertTrue(session.canKeepRecovery)
+        XCTAssertEqual(session.recoveryRevision, model.sourceRevision)
+        XCTAssertEqual(session.recoveryDraft.map { Array($0.source.utf8) }, Array(expected.utf8))
+        XCTAssertEqual(session.document.baseline, originalBaseline)
+        XCTAssertEqual(Array(session.document.source.utf8), Array(originalSource.utf8))
+        let events = await harness.recorded()
+        XCTAssertEqual(events, ["checkpoint", "save", "checkpoint", "save"])
+    }
     func testCheckpointFailureBlocksDocumentWriteAndInvalidatesOldAcknowledgement() async {
         let harness = RecoveryHarness(); await harness.configure(saveFails: true)
         let session = make(harness); edit(session, "new")

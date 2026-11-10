@@ -29,7 +29,8 @@ let package = Package(
                 "CollectionSearchModel.swift",
                 "RecoveryDraft.swift",
                 "DocumentSession.swift",
-                "SourceCopyExport.swift"
+                "SourceCopyExport.swift",
+                "MarkdownInsertion.swift"
             ]
         ),
         .testTarget(
@@ -39,7 +40,8 @@ let package = Package(
             exclude: [
                 "DeclarativeDecoderTests.swift",
                 "EditorModelTests.swift",
-                "NativeSelectionTests.swift"
+                "NativeSelectionTests.swift",
+                "NativeMarkdownInsertionTests.swift"
             ],
             sources: [
                 "NativeTestDirectory.swift",
@@ -51,7 +53,8 @@ let package = Package(
                 "RecoverySessionTests.swift",
                 "SaveAsSessionTests.swift",
                 "SaveAsStoreTests.swift",
-                "SourceCopyExportTests.swift"
+                "SourceCopyExportTests.swift",
+                "MarkdownInsertionTests.swift"
             ]
         )
     ],

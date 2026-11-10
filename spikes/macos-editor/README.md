@@ -17,6 +17,12 @@ MRK-39 passes **58 shared storage/session tests +5 focused AppKit groups**, with
 
 The bundled fixture now includes read-only Reading mode. All 12 scoped offscreen groups pass in `build/reading-mode-native-20261110.log`, including immediate preview refresh, delivered-paste refusal and exact source/reverse selection retention. Separate browser checks pass 33/skip 1; all 87 Node groups pass. `build/reading-mode-host-20261110.log` records the unsigned warnings-as-errors build into the unused separate Verification product. The visible Debug app/tabs were preserved. The first attempt's below 20 GiB resource stop is retained; after cleanup about 47 GiB allowed sequential verification. These are scoped UI-policy checks, not OS keyboard/clipboard/VoiceOver or network-isolation acceptance. See desktop README/ADR0002 for limits.
 
+## Native Markdown insertion
+
+MRK-42 adds **Insert Markdown → Bold / Italic / Inline code** to the native source context menu. Literal selected source or a selected placeholder is inserted through native text/undo. Retained menu actions refuse stale source/ranges, inactive, detached, read-only, composing or multiple-selection views. Existing source identity, generation and save/recovery authority are preserved.
+
+The shared Mac corpus passes 113 tests and all 13 focused AppKit/Transferable groups pass. Three new groups exercise actual menu activation, native undo/redo, refused stale/marked actions and conflicted-original recovery after an ordinary formatting edit. The unsigned Verification app builds with warnings as errors. Actual OS menu/keyboard/IME, VoiceOver and complete Markdown rendering remain open. See [the contract and evidence](../../docs/native-markdown-insertion-validation.md).
+
 ## Native source-copy export
 
 MRK-41 adds **Export source copy…** to the native collection workspace. It exports an immutable current-source snapshot, including unsaved edits, while keeping the original session, baseline and recovery state. Assets/includes remain source references. Pending requests guard navigation and close; the close delegate refuses them synchronously to prevent delayed close work after completion.
