@@ -17,7 +17,7 @@ struct SourceBlock: Identifiable, Equatable {
     private(set) var readingMode = false
     private(set) var documentSource = ""
     private(set) var documentSelection = SourceSelection.beginning
-    private var sourceRevision = 0
+    private(set) var sourceRevision = 0
     private var documentSelectionRevision: Int?
     private var blockSelections: [Int: NSRange] = [:]
     private(set) var editingGeneration = 0
@@ -304,10 +304,25 @@ struct NativeSourceEditor: UIViewRepresentable {
 }
 
 @main struct EditorSpikeApp: App {
-    var body: some Scene { WindowGroup { EditorScreen().preferredColorScheme(ProcessInfo.processInfo.arguments.contains("--dark-mode") ? .dark : nil) } }
+    private let store = CollectionStore(root: CollectionLibrary.rootURL)
+    var body: some Scene {
+        WindowGroup {
+            Group {
+                if ProcessInfo.processInfo.arguments.contains("--editor-fixture") { EditorScreen() }
+                else { CollectionLibrary(store: store) }
+            }.preferredColorScheme(ProcessInfo.processInfo.arguments.contains("--dark-mode") ? .dark : nil)
+        }
+    }
 }
 struct EditorScreen: View {
-    @State private var model = EditorModel(source: EditorModel.launchSource)
+    @State private var model: EditorModel
+    private let title: String
+    private let onEdit: (() -> Void)?
+    init(model: EditorModel? = nil, title: String = "Markright spike", onEdit: (() -> Void)? = nil) {
+        _model = State(initialValue: model ?? EditorModel(source: EditorModel.launchSource))
+        self.title = title
+        self.onEdit = onEdit
+    }
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private var actionLayout: AnyLayout {
         dynamicTypeSize > .large ? AnyLayout(VStackLayout(alignment: .leading)) : AnyLayout(HStackLayout())
@@ -345,7 +360,7 @@ struct EditorScreen: View {
                     LazyVStack(alignment: .leading, spacing: 12) { documentRows }.padding()
                 }
             }
-            .navigationTitle("Markright spike")
+            .navigationTitle(title)
             .safeAreaInset(edge: .bottom) {
                 actionLayout { actionButtons }
                 .font(.body).buttonStyle(.borderedProminent).controlSize(.large)
@@ -356,6 +371,8 @@ struct EditorScreen: View {
                 .background(Color(uiColor: .systemBackground))
             }
         }
+        .onChange(of: model.sourceRevision) { onEdit?() }
+        .onChange(of: model.composing) { _, composing in if !composing { onEdit?() } }
     }
     @ViewBuilder private var documentRows: some View {
         Text("Interaction prototype. Not a complete Markdown editor.").font(.caption).foregroundStyle(.primary)

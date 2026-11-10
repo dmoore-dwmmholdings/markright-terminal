@@ -1,0 +1,163 @@
+import SwiftUI
+
+struct CollectionLibrary: View {
+    let store: CollectionStore
+    @State private var collections: [String] = []
+    @State private var collection: String?
+    @State private var documents: [String] = []
+    @State private var session: DocumentSession?
+    @State private var errorMessage: String?
+    @State private var name = ""
+    @State private var newCollection = false
+    @State private var newDocument = false
+    @State private var busy = false
+    @Environment(\.scenePhase) private var scenePhase
+
+    static var testRootID: String? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let index = args.firstIndex(of: "--library-test-root"), args.indices.contains(index + 1),
+              let id = UUID(uuidString: args[index + 1]) else { return nil }
+        return id.uuidString
+    }
+    static var rootURL: URL {
+        let documents = URL.documentsDirectory.resolvingSymlinksInPath()
+        if let testRootID { return documents.appendingPathComponent("MarkrightTest-\(testRootID)", isDirectory: true) }
+        return documents.appendingPathComponent("MarkrightCollections", isDirectory: true)
+    }
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                // Keep short lists mounted across Dynamic Type relayout. Larger
+                // lists remain lazy; these bounds never truncate stored entries.
+                if collections.count + documents.count <= 128 {
+                    VStack(alignment: .leading, spacing: 16) { libraryRows }.padding()
+                } else {
+                    LazyVStack(alignment: .leading, spacing: 16) { libraryRows }.padding()
+                }
+            }
+            .navigationTitle("Markright")
+            .disabled(busy)
+            .safeAreaInset(edge: .bottom) {
+                VStack(alignment: .leading) {
+                    Button("New collection") { name = ""; newCollection = true }.accessibilityIdentifier("new-collection")
+                    if collection != nil {
+                        Button("New document") { name = ""; newDocument = true }.accessibilityIdentifier("new-document")
+                    }
+                    if errorMessage != nil { Button("Refresh") { perform { try await refresh() } } }
+                }
+                .font(.body).buttonStyle(.borderedProminent).controlSize(.large)
+                .tint(Color(red: 0.35, green: 0.25, blue: 0.05))
+                .frame(maxWidth: .infinity, alignment: .leading).padding()
+                .background(Color(uiColor: .systemBackground)).disabled(busy)
+            }
+            .alert("New collection", isPresented: $newCollection) {
+                TextField("Collection name", text: $name)
+                Button("Create") { let value = name; perform { try await store.createCollection(value); try await refresh(); try await select(value) } }
+                Button("Cancel", role: .cancel) {}
+            }
+            .alert("New document", isPresented: $newDocument) {
+                TextField("Document name", text: $name)
+                Button("Create") {
+                    let value = name
+                    guard let collection else { return }
+                    perform {
+                        let filename = value + ".mrk"
+                        let document = try await store.createDocument(collection: collection, name: filename)
+                        try await select(collection)
+                        session = makeSession(document)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { Text("Enter a name without a file extension.") }
+        }
+        .task { perform { try await refresh() } }
+        .sheet(item: $session, onDismiss: { perform { try await refresh() } }) { session in
+            DocumentWorkspace(session: session) { self.session = nil }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active, let session { Task { _ = await session.flush() } }
+        }
+    }
+    @ViewBuilder private var libraryRows: some View {
+        Section {
+            if collections.isEmpty { Text("Create a collection to start writing.") }
+            ForEach(collections, id: \.self) { item in
+                Button { perform { try await select(item) } } label: {
+                    HStack {
+                        Text(item)
+                        Spacer()
+                        if collection == item { Image(systemName: "checkmark").accessibilityHidden(true) }
+                    }.frame(minHeight: 44)
+                }.buttonStyle(.plain).foregroundStyle(.primary)
+                .accessibilityValue(collection == item ? "Selected" : "")
+                .accessibilityIdentifier("collection-\(item)")
+            }
+        } header: { Text("Collections").font(.headline).foregroundStyle(.primary) }
+        if let collection {
+            Section {
+                if documents.isEmpty { Text("No documents yet.") }
+                ForEach(documents, id: \.self) { item in
+                    Button(item) { perform { try await open(collection: collection, name: item) } }
+                        .buttonStyle(.plain).foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).accessibilityIdentifier("document-\(item)")
+                }
+            } header: { Text("Documents in \(collection)").font(.headline).foregroundStyle(.primary) }
+        }
+        Section {
+            Text("Stored on this device. No sync.").font(.body).fixedSize(horizontal: false, vertical: true)
+            Text("Collection and editing prototype.").font(.body).fixedSize(horizontal: false, vertical: true)
+            if let errorMessage { Text(errorMessage).accessibilityIdentifier("library-error") }
+        }
+    }
+    private func perform(_ operation: @escaping @MainActor () async throws -> Void) {
+        guard !busy else { return }
+        busy = true
+        Task {
+            defer { busy = false }
+            do { try await operation(); errorMessage = nil }
+            catch { errorMessage = error.localizedDescription }
+        }
+    }
+    private func refresh() async throws {
+        collections = try await store.collections()
+        if let collection, collections.contains(collection) { documents = try await store.documents(in: collection) }
+        else { collection = nil; documents = [] }
+    }
+    private func select(_ name: String) async throws {
+        let listed = try await store.documents(in: name)
+        collection = name
+        documents = listed
+    }
+    private func open(collection: String, name: String) async throws {
+        session = makeSession(try await store.open(collection: collection, name: name))
+    }
+    private func makeSession(_ document: StoredDocument) -> DocumentSession {
+        let failSaves = Self.testRootID != nil && ProcessInfo.processInfo.arguments.contains("--fail-library-save")
+        return DocumentSession(document: document) { document, source in
+            if failSaves { throw CocoaError(.fileWriteNoPermission) }
+            return try await store.save(document, source: source)
+        }
+    }
+}
+
+private struct DocumentWorkspace: View {
+    @Bindable var session: DocumentSession
+    let close: () -> Void
+    @State private var closing = false
+    var body: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading) {
+                Button("Close document") {
+                    closing = true
+                    Task { if await session.flush() { close() }; closing = false }
+                }.foregroundStyle(.primary).frame(minHeight: 44).accessibilityIdentifier("close-document").disabled(closing || session.model.composing)
+                Text(session.status).accessibilityIdentifier("document-save-status")
+                if session.errorMessage != nil || session.document.durabilityWarning != nil {
+                    Button("Retry save") { Task { _ = await session.flush() } }.foregroundStyle(.primary).frame(minHeight: 44).accessibilityIdentifier("retry-save")
+                }
+            }.font(.body).frame(maxWidth: .infinity, alignment: .leading).padding()
+            EditorScreen(model: session.model, title: session.document.name, onEdit: { session.scheduleSave() })
+        }
+        .interactiveDismissDisabled(!session.canClose)
+    }
+}

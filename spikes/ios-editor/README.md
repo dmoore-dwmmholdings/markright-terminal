@@ -1,6 +1,16 @@
-# MRK-9 native interaction spike
+# Native collection and editing validation
 
-SwiftUI previews plus a native UITextView for the selected source line/fixture block. It runs only on a dedicated simulator; no real documents, sync, disk persistence, scripts, signing account or physical devices are involved.
+Native SwiftUI collection browsing and native UITextView source/preview/reading editing. The app-owned collection validation is tracked by MRK-36; editor interaction research remains MRK-9. Automated runs use synthetic documents on the dedicated simulator, with no sync, script execution, signing account or physical devices.
+
+The default launch now creates and reopens app-owned collection folders and UTF-8 documents with autosave. See [the storage contract and limitations](../../docs/native-collections-validation.md). External folders, recovery, full identity and production MRK-18 acceptance remain gated. Use `--editor-fixture` for the historical sample editor, including with `--static-calculator` or `--large-document`.
+
+## App-owned collection checkpoint
+
+MRK-36 adds a native collection/document browser, ordinary UTF-8 file creation/opening and debounced autosave. One app-wide actor refuses unsafe paths/collisions and divergent baseline writes; one session pump retains in-flight receipts and newer edits. Close waits for a confirmed save, with composition/error/durability gates and retained source on failure. File contents remain authoritative; no imported code runs.
+
+Full `build/MRK36-native-collections-verified-20261110.xcresult`: **50 native/model/decoder + 16 UI tests pass**, zero failures/skips/runtime warnings, Swift warnings as errors. Includes create/edit/close/reopen/acknowledged-save relaunch, injected failure retention, ten storage and seven session tests, six unfiltered light/dark browser/workspace audit invocations, plus every prior editor test. The original audit failure and successful targeted rerun are retained. See [the detailed contract and evidence](../../docs/native-collections-validation.md).
+
+Short collection lists keep at most 128 listed entries mounted through Dynamic Type changes; larger lists remain lazy without truncation. The owned iPhone Duo/iOS 27.2 simulator is Shutdown, approximately 164.3 GiB free after the run. External folders, crash recovery/save-copy, cross-process coordination, full identity, VoiceOver/real IME, physical devices and production/security/release acceptance remain open. MRK-18/12 stay gated; this slice does not close MRK-R6/R7/R15.
 
 ## Caret and selection continuity
 
@@ -10,7 +20,7 @@ Block and whole-document editors now resume their saved UTF-16 selection extent 
 
 Result `build/MRK9-native-selection-full-20261110.xcresult`: **33 native/model/decoder + 12 UI tests pass**, zero failures/skips, with Swift warnings as errors. Nine new native groups cover validation, mapping, Unicode/revisions, stale/invalid ranges, actual UITextView replacement/marked text and a 1 MB model bookmark. Two UI flows type at restored block/document carets without tapping the editor. All four unfiltered light/dark preview/reading audits, rendered-caption OCR and the earlier 1 MB interaction smoke also pass. The owned iPhone Duo/iOS 27.2 simulator was restored to Shutdown; no other destination or runtime download was used.
 
-Only selection extent is retained: selection direction/affinity, prior scroll position, cross-mode undo, cross-launch persistence, real IME/VoiceOver, current iPad/physical devices and p95 paint remain open. Byte comparisons/range validation can scale with source length; this is not a production performance qualification. Local commits continue while the repository destination is resolved separately.
+Only selection extent is retained: selection direction/affinity, prior scroll position, cross-mode undo, cross-launch selection persistence, real IME/VoiceOver, current iPad/physical devices and p95 paint remain open. Byte comparisons/range validation can scale with source length; this is not a production performance qualification. Local commits continue while the repository destination is resolved separately.
 
 ## Native reading mode
 
@@ -42,7 +52,7 @@ The model tests cover fixture source round-trip, block grouping, edits preservin
 
 ## Explicit limitations
 
-Grouping is a small fixture-level experiment, NOT CommonMark/GFM or the Markright grammar. Ordinary inline preview uses Foundation AttributedString; code/table previews currently remain source-like. IDs/groups are not reparsed after structural edits. There is no complete authoring toolbar, cross-block selection/undo, file collection, large-document UI performance proof, VoiceOver session, real IME keyboard proof, iPad/physical device validation or app-release acceptance. No claim of full Liquid Glass/accessibility conformance follows from system controls. MRK-9 stays open.
+Grouping is a small fixture-level experiment, NOT CommonMark/GFM or the Markright grammar. Ordinary inline preview uses Foundation AttributedString; code/table previews currently remain source-like. IDs/groups are not reparsed after structural edits. There is no complete authoring toolbar, cross-block selection/undo, full external-folder collection workflow, large-document UI performance proof, VoiceOver session, real IME keyboard proof, iPad/physical device validation or app-release acceptance. No claim of full Liquid Glass/accessibility conformance follows from system controls. MRK-9 stays open.
 
 ## Extended phone and tablet checks
 
@@ -74,7 +84,7 @@ Both dedicated phone and iPad now pass **12 native tests and 5 UI tests**, inclu
 
 `DeclarativeDecoder.swift` is a pure typed Swift bit-field kernel with exact UInt64/signed results and bounded literal table output. It has test-only callers; no document JSON parser, interpreter, automatic execution or calculator UI bridge is added. `fixtures/bitfields-0.1.json` supplies 49 shared trusted vectors. Foundation JSONDecoder is used only to load that authored test corpus, not untrusted document data.
 
-The `--static-calculator` launch flag loads only the authored bundled `calculator-static.md`. Its frozen table and inert script source remain readable while execution is unavailable, with explicit freshness/trust disclaimers. This is fixture-level readability, not snapshot/import/export or distribution acceptance.
+The `--editor-fixture --static-calculator` launch flags loads only the authored bundled `calculator-static.md`. Its frozen table and inert script source remain readable while execution is unavailable, with explicit freshness/trust disclaimers. This is fixture-level readability, not snapshot/import/export or distribution acceptance.
 
 Current isolated destination: `Markright-MRK28-iOS27-20261109`, `B41A0866-71EA-45B5-94DB-C1634AEC0F5B`, iPhone Duo/iOS 27.2. The runtime was already installed; no download, physical device or other project's simulator was used. Targeted result `build/MRK28-native-declarative-ios27-20261109.xcresult`: **7 native decoder tests + 1 static-readability UI test pass**. The prior full editor/audit counts above are historical and were not rerun for this targeted change. Current policy evidence and remaining gates are in `docs/adr-0005-ios-declarative-fallback.md`.
 

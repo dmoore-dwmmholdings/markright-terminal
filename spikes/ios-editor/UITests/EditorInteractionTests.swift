@@ -2,7 +2,7 @@ import XCTest
 import Vision
 @MainActor final class EditorInteractionTests: XCTestCase {
     func testBlockCaretResumesAfterReadingWithoutTappingTheEditor() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["preview-1"].waitForExistence(timeout: 10)); app.buttons["preview-1"].tap()
         let editor = app.textViews["source-editor-1"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5)); XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
@@ -16,7 +16,7 @@ import Vision
         XCTAssertEqual(editor.value as? String, before.replacingOccurrences(of: "CARET", with: "CARETX"))
     }
     func testWholeSourceCaretResumesAfterReadingWithoutTappingTheEditor() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["show-document-source"].waitForExistence(timeout: 10)); app.buttons["show-document-source"].tap()
         let editor = app.textViews["document-source-editor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5)); XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
@@ -39,7 +39,7 @@ import Vision
         }
     }
     func testReadingModeShowsStaticTextAndPreservesEditsOnExit() throws {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture"]; app.launch()
         let preview = app.buttons["preview-1"]
         XCTAssertTrue(preview.waitForExistence(timeout: 10)); preview.tap()
         let editor = app.textViews["source-editor-1"]
@@ -77,7 +77,7 @@ import Vision
         XCTAssertEqual(app.textViews["source-editor-1"].value as? String, edited)
     }
     func testReadingModeCommitsWholeSourceBeforeShowingStaticText() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["show-document-source"].waitForExistence(timeout: 10))
         app.buttons["show-document-source"].tap()
         let editor = app.textViews["document-source-editor"]
@@ -90,21 +90,21 @@ import Vision
         XCTAssertTrue(editor.waitForExistence(timeout: 5)); XCTAssertEqual(editor.value as? String, edited)
     }
     func testReadingAccessibilityAudit() throws {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["toggle-reading-mode"].waitForExistence(timeout: 10))
         app.buttons["toggle-reading-mode"].tap()
         XCTAssertTrue(app.staticTexts["reading-1"].waitForExistence(timeout: 5))
         try audit(app)
     }
     func testDarkReadingAccessibilityAudit() throws {
-        let app = XCUIApplication(); app.launchArguments = ["--dark-mode"]; app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture", "--dark-mode"]; app.launch()
         XCTAssertTrue(app.buttons["toggle-reading-mode"].waitForExistence(timeout: 10))
         app.buttons["toggle-reading-mode"].tap()
         XCTAssertTrue(app.staticTexts["reading-1"].waitForExistence(timeout: 5))
         try audit(app)
     }
     func testActiveLineAndAtomicFenceTransition() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture"]; app.launch()
         let line = app.buttons["preview-1"]
         XCTAssertTrue(line.waitForExistence(timeout: 10)); line.tap()
         let editor = app.textViews["source-editor-1"]
@@ -125,7 +125,7 @@ import Vision
         XCTAssertTrue((app.textViews["source-editor-3"].value as? String ?? "").contains("let value = 42"))
     }
     func testLargeDocumentCanEnterEditAndReturnToPreview() {
-        let app = XCUIApplication(); app.launchArguments = ["--large-document"]; app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture", "--large-document"]; app.launch()
         let first = app.buttons["preview-0"]
         XCTAssertTrue(first.waitForExistence(timeout: 20)); first.tap()
         let editor = app.textViews["source-editor-0"]
@@ -141,7 +141,7 @@ import Vision
         XCTAssertEqual(app.textViews["source-editor-0"].value as? String, source)
     }
     func testWholeDocumentSourceCanEditAndReturnWithoutLosingMarkdown() {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture"]; app.launch()
         let sourceButton = app.buttons["show-document-source"]
         XCTAssertTrue(sourceButton.waitForExistence(timeout: 10)); sourceButton.tap()
         let editor = app.textViews["document-source-editor"]
@@ -160,7 +160,7 @@ import Vision
         XCTAssertEqual(app.textViews["document-source-editor"].value as? String, changed)
     }
     func testStaticCalculatorResultRemainsReadableWithoutExecution() {
-        let app = XCUIApplication(); app.launchArguments = ["--static-calculator"]; app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture", "--static-calculator"]; app.launch()
         let warning = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "execution is unavailable")).firstMatch
         XCTAssertTrue(warning.waitForExistence(timeout: 10))
         let result = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "18446744073709551615")).firstMatch
@@ -176,13 +176,13 @@ import Vision
     }
 
     func testPreviewAccessibilityAudit() throws {
-        let app = XCUIApplication(); app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture"]; app.launch()
         XCTAssertTrue(app.buttons["preview-1"].waitForExistence(timeout: 10))
         try audit(app)
     }
 
     func testDarkPreviewAccessibilityAudit() throws {
-        let app = XCUIApplication(); app.launchArguments = ["--dark-mode"]; app.launch()
+        let app = XCUIApplication(); app.launchArguments = ["--editor-fixture", "--dark-mode"]; app.launch()
         XCTAssertTrue(app.buttons["preview-1"].waitForExistence(timeout: 10))
         try audit(app)
     }
