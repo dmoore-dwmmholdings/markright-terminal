@@ -1,4 +1,5 @@
 import XCTest
+import Vision
 @MainActor final class EditorInteractionTests: XCTestCase {
     private func audit(_ app: XCUIApplication) throws {
         try app.performAccessibilityAudit(for: .all) { issue in
@@ -9,7 +10,7 @@ import XCTest
             return false // Report every issue; no category or element is ignored.
         }
     }
-    func testReadingModeShowsStaticTextAndPreservesEditsOnExit() {
+    func testReadingModeShowsStaticTextAndPreservesEditsOnExit() throws {
         let app = XCUIApplication(); app.launch()
         let preview = app.buttons["preview-1"]
         XCTAssertTrue(preview.waitForExistence(timeout: 10)); preview.tap()
@@ -20,8 +21,6 @@ import XCTest
         reading.tap()
         let text = app.staticTexts["reading-1"]
         XCTAssertTrue(text.waitForExistence(timeout: 5))
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "Native reading mode"; screenshot.lifetime = .keepAlways; add(screenshot)
         // Markdown presentation trims leading whitespace; raw source is checked
         // exactly after leaving reading mode below.
         XCTAssertTrue(text.label.contains("literal -- \"read\""), "Reading label: \(text.label); edited source: \(edited ?? "missing")")
@@ -29,6 +28,19 @@ import XCTest
         XCTAssertFalse(app.buttons["show-document-source"].exists)
         XCTAssertFalse(app.buttons["finish-editing"].exists)
         XCTAssertEqual(reading.value as? String, "On")
+        // Capture evidence after keyboard dismissal and the button label's
+        // native transition, rather than recording an intermediate frame.
+        Thread.sleep(forTimeInterval: 0.75)
+        let rendered = app.screenshot()
+        let caption = VNRecognizeTextRequest()
+        caption.recognitionLevel = .accurate
+        caption.recognitionLanguages = ["en-US"]
+        caption.usesLanguageCorrection = false
+        try VNImageRequestHandler(cgImage: XCTUnwrap(rendered.image.cgImage)).perform([caption])
+        let visibleText = caption.results?.compactMap { $0.topCandidates(1).first?.string } ?? []
+        XCTAssertTrue(visibleText.contains("Exit reading"), "Missing rendered mode caption: \(visibleText)")
+        let screenshot = XCTAttachment(screenshot: rendered)
+        screenshot.name = "Native reading mode"; screenshot.lifetime = .keepAlways; add(screenshot)
         text.tap()
         XCTAssertEqual(app.textViews.count, 0)
         reading.tap()

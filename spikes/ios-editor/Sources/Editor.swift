@@ -228,6 +228,7 @@ struct EditorScreen: View {
                 .accessibilityIdentifier("finish-editing").disabled(model.composing)
         }
         Button(model.readingMode ? "Exit reading" : "Read") { model.setReadingMode(!model.readingMode) }
+            .id(model.readingMode)
             .accessibilityLabel(model.readingMode ? "Exit reading" : "Reading mode")
             .accessibilityIdentifier("toggle-reading-mode")
             .accessibilityValue(model.readingMode ? "On" : "Off")
