@@ -12,7 +12,7 @@ The separate native workspace can be checked without opening the visible researc
 
 ```sh
 python3 spikes/macos-editor/run-native-collection-checks.py
-swift test --package-path spikes --scratch-path spikes/macos-editor/build/SharedNativePackage -Xswiftc -warnings-as-errors
+swift test --package-path spikes --jobs 2 -Xswiftc -warnings-as-errors
 ```
 
 Both commands run from the repository root. The AppKit probe uses synthetic temporary collections and a prohibited activation policy; it never calls the real app-owned workspace manager. Run serially with other builds and retain at least 20 GiB free.
