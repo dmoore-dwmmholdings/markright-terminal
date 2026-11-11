@@ -169,6 +169,62 @@ class CalibrationLauncherChecks(unittest.TestCase):
                             g["build"]()
                         self.assertFalse((output/"current.json").exists())
 
+    def test_compile_results_retain_diagnostics_without_signalling_finished_jobs(self):
+        g = self.g
+        for result in [0, 17]:
+            with self.subTest(result=result), tempfile.TemporaryDirectory(prefix="mrk-ax-launcher-check-") as temporary:
+                log = Path(temporary)/"compile.log"
+                process = Mock(pid=999)
+                process.wait.return_value = result
+                def fake_popen(command, **kwargs):
+                    kwargs["stdout"].write(b"Synthetic compiler diagnostics\n")
+                    return process
+                with patch.object(g["subprocess"], "Popen", side_effect=fake_popen) as popen, \
+                        patch.object(g["os"], "killpg") as kill:
+                    if result:
+                        with self.assertRaisesRegex(RuntimeError, "Compile failed \\(17\\)"):
+                            g["compile_owned"](["fake-compiler"], log)
+                    else:
+                        g["compile_owned"](["fake-compiler"], log)
+                    self.assertTrue(popen.call_args.kwargs["start_new_session"])
+                    process.wait.assert_called_once_with(timeout=90)
+                    kill.assert_not_called()
+                self.assertEqual(log.read_bytes(), b"Synthetic compiler diagnostics\n")
+
+    def test_compile_cancellation_targets_only_its_own_new_process_group(self):
+        g = self.g
+        for interrupted in [False, True]:
+            for forced in [False, True]:
+                with self.subTest(interrupted=interrupted, forced=forced), \
+                        tempfile.TemporaryDirectory(prefix="mrk-ax-launcher-check-") as temporary:
+                    failure = KeyboardInterrupt() if interrupted else subprocess.TimeoutExpired(["fake-compiler"], 90)
+                    process = Mock(pid=999)
+                    process.wait.side_effect = [failure, subprocess.TimeoutExpired(["fake-compiler"], 5), 0] if forced else [failure, 0]
+                    with patch.object(g["subprocess"], "Popen", return_value=process) as popen, \
+                            patch.object(g["os"], "killpg") as kill:
+                        with self.assertRaises(type(failure)) as caught:
+                            g["compile_owned"](["fake-compiler"], Path(temporary)/"compile.log")
+                        self.assertIs(caught.exception, failure)
+                        self.assertTrue(popen.call_args.kwargs["start_new_session"])
+                        expected = [(999, g["signal"].SIGTERM)]
+                        if forced:
+                            expected.append((999, g["signal"].SIGKILL))
+                        self.assertEqual([call.args for call in kill.call_args_list], expected)
+                        self.assertEqual([call.kwargs for call in process.wait.call_args_list],
+                                         [{"timeout": 90}, {"timeout": 5}] + ([{"timeout": 5}] if forced else []))
+
+    def test_compile_exit_race_preserves_original_timeout(self):
+        g = self.g
+        with tempfile.TemporaryDirectory(prefix="mrk-ax-launcher-check-") as temporary:
+            failure = subprocess.TimeoutExpired(["fake-compiler"], 90)
+            process = Mock(pid=999)
+            process.wait.side_effect = [failure, subprocess.TimeoutExpired(["fake-compiler"], 5), 0]
+            with patch.object(g["subprocess"], "Popen", return_value=process), \
+                    patch.object(g["os"], "killpg", side_effect=[None, ProcessLookupError()]):
+                with self.assertRaises(subprocess.TimeoutExpired) as caught:
+                    g["compile_owned"](["fake-compiler"], Path(temporary)/"compile.log")
+                self.assertIs(caught.exception, failure)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

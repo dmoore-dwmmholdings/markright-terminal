@@ -163,7 +163,12 @@ def compile_owned(command, log):
             try:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGKILL)
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    # The owned group may exit after the grace wait times out.
+                    # Reap the leader and retain the original cancellation.
+                    pass
                 process.wait(timeout=5)
             raise
     if result:

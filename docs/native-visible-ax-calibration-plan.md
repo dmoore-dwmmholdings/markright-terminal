@@ -42,13 +42,15 @@ Outputs remain under ignored `spikes/.build/macos-ax-calibration/`; the existing
 
 ## Source-only verification
 
-The Python AST parse, real `--help` path and `git diff --check` pass. Six lightweight launcher regression groups also pass:
+The Python AST parse, real `--help` path and `git diff --check` pass. Nine lightweight launcher regression groups also pass:
 
 ```sh
 python3 spikes/macos-editor/check-ax-calibration-launcher.py
 ```
 
-These checks use fake compiler/process/launch operations and synthetic temporary files. They exercise early CLI refusal, build/launch separation, disk/load/process-inventory refusal, unknown/symlink output ownership, overlapping operation locks, stale build/app metadata, the exact synthetic launch flag and source changes during a mock compile. They do not inventory the real host, compile Swift, launch an application or establish the behavior of real compiler timeout cancellation. An initial ad-hoc check correctly hit the symlink guard at macOS's `/var` temporary-directory alias; the test fixtures now use the resolved temporary root, without relaxing launcher checks.
+These checks use fake compiler/process/launch/signal operations and synthetic temporary files. They exercise early CLI refusal, build/launch separation, disk/load/process-inventory refusal, unknown/symlink output ownership, overlapping operation locks, stale build/app metadata, the exact synthetic launch flag and source changes during a mock compile. Compiler-result cases preserve diagnostics and send no signal after a completed job; mocked timeout/interrupt cases check the new process-group boundary and bounded graceful/forced waits. They do not inventory the real host, compile Swift, launch an application or establish the behavior of real compiler timeout cancellation. An initial ad-hoc check correctly hit the symlink guard at macOS's `/var` temporary-directory alias; the test fixtures now use the resolved temporary root, without relaxing launcher checks.
+
+A follow-up regression reproduced a cancellation race: if the owned group exited after its graceful wait expired but before the forced signal, `ProcessLookupError` replaced the original timeout. The launcher now tolerates that already-exited group, reaps its leader and retains the original cancellation. The new case failed before the fix and passes afterward. All process and signal operations in this regression are mocked; no real group was stopped.
 
 Independent source review found no blocking issue and approved the checkpoint with runtime verification still required. The four source-level accessibility passes found native system styles and textual state feedback, native labeled controls, no custom motion and a missing heading trait that is now added. The activation call uses the public macOS 14 API recommended by the installed SDK. Actual contrast/layout, keyboard/focus/IME and AX/spoken behavior remain unmeasured.
 
