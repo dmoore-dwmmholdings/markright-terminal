@@ -67,6 +67,8 @@ All 16 prior groups and independent preview data retention pass again, while the
 
 ## Next validation and preserved gates
 
+A separate [visible synthetic calibration helper](native-visible-ax-calibration-plan.md) is now authored to compare the plain SwiftUI control and existing native source/preview in an ordinary visible window. It is **uncompiled and unrun**; separate build and launch commands require fresh admission and foreground coordination. No hidden-host predicate, collection workflow or production entry point is changed. The helper has no collection/Open marker or iOS surface and cannot substitute for their required validation.
+
 The other worker's exclusive slot was explicitly released before these bounded runs. Capacity was checked before each compile; compiler concurrency was limited to two jobs, with no overlapping Markright jobs. About 135 GiB remained available. The existing visible Debug app and preview listener were preserved; the host loopback preview returned HTTP 200 after verification, and its bundled JavaScript hash is unchanged.
 
 Keep this candidate separate from main while the required native semantic panel/marker assertions still fail. Readable native captures now establish the scoped painted states above; the semantic accessibility observation remains unresolved. Arrange an observation that can actually see the synthetic fixture without changing accessibility settings, enabling VoiceOver unattended, interfering with another lane's UI test or changing product focus/capability semantics merely to satisfy the harness. Preserve the failing gate and existing evidence.

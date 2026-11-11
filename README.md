@@ -8,6 +8,8 @@ The publication status is recorded in [docs/github-destination.md](docs/github-d
 
 An **unmerged native companion-preview candidate** adds opt-in partial inline preview and an open-document marker. It passes 156 shared tests, all 16 prior native groups and an independent preview-retention group. Readable native captures show styled/literal rows, composition pause, current unsaved text and changed-document markers; the Mac preview now has a wider 260-point minimum. Hidden-host accessibility observation still fails, so the overall native suite fails and main remains unchanged. [Candidate evidence and remaining validation](docs/native-companion-preview-validation.md) distinguish painted behavior, retention and open acceptance.
 
+A separate [visible synthetic accessibility calibration helper](docs/native-visible-ax-calibration-plan.md) is authored but **uncompiled and unrun**. Build and visible launch are separate opt-in operations requiring coordinated host capacity and observation. It does not replace the failing workspace checks or accept VoiceOver behavior.
+
 ## Reproduce
 
 - Node 22+: `npm ci --ignore-scripts`, then `npm test`.
