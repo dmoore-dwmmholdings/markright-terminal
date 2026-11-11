@@ -10,6 +10,8 @@ An **unmerged native source-outline candidate** adds a bounded heading-navigatio
 
 An **unmerged native heading/quote source candidate** extends that checkpoint with literal Heading 1/2/3 and Blockquote insertion through existing native menus and undo. It passes **166 shared tests and all 18 AppKit groups**, including exact source/endings, placeholders and separate native typing/insertion undo. Unsigned Mac and iOS test-bundle builds succeed. Actual OS input, attached iOS runtime, VoiceOver and full authoring acceptance remain open. [Candidate behavior, evidence and limits](docs/native-heading-quote-validation.md).
 
+A **local source-line selection candidate** adds native whole-row selection while preserving source, focus, undo and recovery authority. Its tests and builds are pending. [Behavior and verification status](docs/native-source-line-selection-validation.md).
+
 A **local outline-label candidate** bounds native heading labels by both Characters and UTF-16 units while preserving complete source/navigation ranges. Compilation and execution are pending. [Behavior and evidence status](docs/native-outline-label-validation.md).
 
 A **local task-marker candidate** adds explicit source completion/clearing on the caret row or selected whole rows, preserving byte layout and native editing authority. Verification is pending; no runtime or release acceptance is claimed. [Behavior and planned checks](docs/native-task-marker-validation.md).

@@ -34,7 +34,8 @@ let package = Package(
                 "MarkdownTableInsertion.swift",
                 "TaskMarkerEdit.swift",
                 "SourceOutline.swift",
-                "SourceSelectionFind.swift"
+                "SourceSelectionFind.swift",
+                "SourceLineSelection.swift"
             ]
         ),
         .testTarget(
@@ -52,7 +53,8 @@ let package = Package(
                 "NativeMarkdownTableInsertionTests.swift",
                 "NativeSourceOutlineTests.swift",
                 "NativeSourceSelectionFindTests.swift",
-                "NativeTaskMarkerEditTests.swift"
+                "NativeTaskMarkerEditTests.swift",
+                "NativeSourceLineSelectionTests.swift"
             ],
             sources: [
                 "NativeTestDirectory.swift",
@@ -72,7 +74,8 @@ let package = Package(
                 "MarkdownTableInsertionTests.swift",
                 "TaskMarkerEditTests.swift",
                 "SourceOutlineTests.swift",
-                "SourceSelectionFindTests.swift"
+                "SourceSelectionFindTests.swift",
+                "SourceLineSelectionTests.swift"
             ]
         )
     ],

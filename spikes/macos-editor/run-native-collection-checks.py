@@ -56,7 +56,7 @@ def main():
         "SourceSelection.swift", "EditorModel.swift",
         "CollectionSearch.swift", "CollectionSearchModel.swift", "CollectionSearchPanel.swift",
         "SourceCopyExport.swift", "SourceCopyTransfer.swift", "SourceCopyExporter.swift",
-        "MarkdownInsertion.swift", "MarkdownTableInsertion.swift", "TaskMarkerEdit.swift", "SourceOutline.swift", "SourceSelectionFind.swift",
+        "MarkdownInsertion.swift", "MarkdownTableInsertion.swift", "TaskMarkerEdit.swift", "SourceOutline.swift", "SourceSelectionFind.swift", "SourceLineSelection.swift",
     )] + [
         DIRECTORY / "Sources" / "MacSourceEditor.swift",
         DIRECTORY / "Sources" / "MacCollectionWorkspace.swift",

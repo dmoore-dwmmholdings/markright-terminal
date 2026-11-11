@@ -4,6 +4,8 @@ MRK-39 adds a separate native SwiftUI/AppKit collection/source/recovery workspac
 
 Standalone SwiftUI window around the existing synthetic desktop CodeMirror fixture. This is a macOS shell experiment, not a selected production architecture, Tauri integration, complete Markdown application or native iOS implementation. MRK-9 VoiceOver observation and MRK-12 integrated review remain open.
 
+The local MRK-52 candidate adds **Select source lines** to the native context menu. Shared/native checks are authored and all new verification remains pending. [Behavior and status](../../docs/native-source-line-selection-validation.md).
+
 The local MRK-50 task-marker candidate adds **Toggle task markers** for a caret row or whole-row selection. New verification is pending. [Behavior and planned checks](../../docs/native-task-marker-validation.md).
 
 The local MRK-49 selected-source find candidate adds fixed next/previous exact-occurrence menu actions with literal matching and selection-only navigation. It passes **177 shared tests and all 19 AppKit groups**, including native selection, undo and settled recovery checks; unsigned Mac and iOS test-bundle builds succeed. [Behavior, evidence and open gates](../../docs/native-selection-find-validation.md). This searches current in-memory source separately from MRK-40 saved-collection search.

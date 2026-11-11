@@ -6,6 +6,7 @@ import UIKit
     var allowsMarkdownInsertion = true
     var allowsHeadingNavigation = false
     var allowsSelectionFind = false
+    var allowsSourceLineSelection = false
     override func didMoveToWindow() {
         super.didMoveToWindow()
         guard window != nil && focusesOnAttachment else { return }
@@ -35,6 +36,21 @@ import UIKit
             guard let plan else { return }
             self?.applyMarkdownInsertion(plan)
         }
+    }
+
+    func makeSourceLineSelectionAction() -> UIAction {
+        let available = allowsSourceLineSelection && window != nil && isFirstResponder && isEditable &&
+            markedTextRange == nil && selectedRanges.count == 1
+        let plan = available ? SourceLineSelection.make(source: text, selection: selectedRange) : nil
+        return UIAction(title: SourceLineSelection.title, attributes: plan == nil ? [.disabled] : []) { [weak self, plan] _ in
+            guard let plan else { return }
+            self?.applySourceLineSelection(plan)
+        }
+    }
+
+    @discardableResult func applySourceLineSelection(_ plan: SourceNavigationPlan) -> Bool {
+        guard allowsSourceLineSelection else { return false }
+        return applySourceNavigation(plan)
     }
 
     func makeOutlineMenu() -> UIMenu {
@@ -135,6 +151,7 @@ struct NativeSourceEditor: UIViewRepresentable {
         view.allowsMarkdownInsertion = wholeDocument
         view.allowsHeadingNavigation = wholeDocument
         view.allowsSelectionFind = wholeDocument
+        view.allowsSourceLineSelection = wholeDocument
         view.font = UIFont.preferredFont(forTextStyle: .body)
         view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .secondarySystemBackground
@@ -158,6 +175,7 @@ struct NativeSourceEditor: UIViewRepresentable {
         (view as? SourceTextView)?.allowsMarkdownInsertion = wholeDocument
         (view as? SourceTextView)?.allowsHeadingNavigation = wholeDocument
         (view as? SourceTextView)?.allowsSelectionFind = wholeDocument
+        (view as? SourceTextView)?.allowsSourceLineSelection = wholeDocument
         Self.apply(value, selection: selection, to: view)
     }
     static func apply(_ value: String, selection: NSRange, to view: UITextView) {
@@ -201,7 +219,7 @@ struct NativeSourceEditor: UIViewRepresentable {
             guard source.allowsMarkdownInsertion else { return UIMenu(children: suggestedActions) }
             guard source.selectedRanges.count == 1,
                   range == source.selectedRange else { return nil }
-            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu(), source.makeTaskMarkerAction(), source.makeOutlineMenu(), source.makeSelectionFindMenu()])
+            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu(), source.makeTaskMarkerAction(), source.makeSourceLineSelectionAction(), source.makeOutlineMenu(), source.makeSelectionFindMenu()])
         }
     }
 }

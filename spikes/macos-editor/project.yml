@@ -30,6 +30,7 @@ targets:
       - path: ../ios-editor/Sources/TaskMarkerEdit.swift
       - path: ../ios-editor/Sources/SourceOutline.swift
       - path: ../ios-editor/Sources/SourceSelectionFind.swift
+      - path: ../ios-editor/Sources/SourceLineSelection.swift
       - path: Resources/Editor
         type: folder
         buildPhase: resources
