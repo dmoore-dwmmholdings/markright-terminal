@@ -18,6 +18,10 @@ The AppKit runner adds real local menu targets and root validation, exact ending
 
 Independent read-only review found no blocking issue in UTF-16/half-open row ownership, BOM/EOF/no-op handling, arithmetic bounds, native guard/reporting behavior, authored preservation checks or package/project wiring. It gives GO for a local checkpoint pending serial verification. `git diff --check` passes. No test or build has run; execution evidence remains separate from source review. Pending serial verification is the complete shared corpus, invisible AppKit runner and unsigned Mac/iOS test-bundle builds, with fresh coordination, at least 20 GiB free and at most two compiler jobs. Other owners' native tests are left untouched. No simulator boot or UIKit test is started automatically.
 
+## Preserved launch-preflight result
+
+After review, a preliminary inventory showed no active compiler/native jobs. The final shared-test launch guard then detected a newly active Xcode process and refused **before starting Swift or creating the test log**. No test/build result was produced, no other process was stopped and no competing Markright heavy job began. Source checkpoint `f7fc1b8` remains preserved. This is a resource-preflight refusal, not a compiler or test failure; verification still needs a coordinated quiet slot.
+
 ## Preserved gates
 
 The full parser/renderer/authoring, actual OS menus/keyboard/IME/undo, attached UIKit behavior, attended VoiceOver, physical devices, MRK-46 preview AX observation, untrusted ingestion, network isolation/provider/security and release gates remain open. No main merge, push, alternate publication, credentials, deployment or held external documentation write occurred. Earlier local checkpoints, visible Debug app/preview and other owners' work stay preserved.
