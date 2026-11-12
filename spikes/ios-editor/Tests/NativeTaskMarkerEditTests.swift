@@ -2,7 +2,7 @@ import XCTest
 import UIKit
 @testable import MarkrightEditorSpike
 
-/// Compiled UIKit refusals only until a separately coordinated runtime run.
+/// Authored UIKit refusals; compilation and runtime verification are pending.
 @MainActor final class NativeTaskMarkerEditTests: XCTestCase {
     func testTaskMarkerCaretPlanRefusesDetachedAndBlockScope() throws {
         let source = "\u{FEFF}- [ ] Cafe\u{301} 😀\r\n"

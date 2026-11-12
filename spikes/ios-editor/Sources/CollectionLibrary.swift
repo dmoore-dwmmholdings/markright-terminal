@@ -202,7 +202,7 @@ struct CollectionLibrary: View {
     }
 }
 
-private struct DocumentWorkspace: View {
+struct DocumentWorkspace: View {
     @Bindable var session: DocumentSession
     let collections: [String]
     let create: @Sendable (String, String, String) async throws -> StoredDocument

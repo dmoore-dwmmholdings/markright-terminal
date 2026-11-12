@@ -54,6 +54,7 @@ let package = Package(
                 "NativeSourceOutlineTests.swift",
                 "NativeSourceSelectionFindTests.swift",
                 "NativeTaskMarkerEditTests.swift",
+                "NativeSourceWorkspaceRetentionTests.swift",
                 "NativeSourceLineSelectionTests.swift"
             ],
             sources: [
