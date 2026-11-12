@@ -8,6 +8,8 @@ MRK-39 extracts `EditorModel` unchanged into a Foundation/Observation source sha
 
 ## Native source-line selection candidate
 
+A separate [whole-source mounting follow-up](../../docs/native-source-mount-retention-validation.md) keeps the single native Source editor in a nonlazy container while save/recovery headers relayout. It aligns with the independent preview branch's retention policy and adds no preview. This layout change and the accumulated authoring candidates remain **uncompiled and unrun**; the original recovery-input cause is still unknown.
+
 MRK-52 adds **Select source lines** to whole-document edit menus, expanding touched physical rows with their endings and excluding the initial BOM. Source and undo authority stay with the existing editor. Tests and builds remain pending; attached UIKit and actual menu behavior are unaccepted. [Behavior and verification status](../../docs/native-source-line-selection-validation.md).
 
 ## Native task-marker candidate

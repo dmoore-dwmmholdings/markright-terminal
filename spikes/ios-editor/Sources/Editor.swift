@@ -275,7 +275,10 @@ struct EditorScreen: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                if model.retainsReadingRows {
+                // Whole-source mode has one native editor. Keep it mounted as
+                // the surrounding save/recovery header changes its available
+                // viewport; lazy block rows remain appropriate outside it.
+                if model.sourceMode || model.retainsReadingRows {
                     VStack(alignment: .leading, spacing: 12) { documentRows }.padding()
                 } else {
                     LazyVStack(alignment: .leading, spacing: 12) { documentRows }.padding()
