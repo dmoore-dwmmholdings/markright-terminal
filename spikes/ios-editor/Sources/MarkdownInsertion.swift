@@ -28,16 +28,35 @@ enum MarkdownInsertionCommand: CaseIterable, Sendable, Equatable {
     }
 }
 
-/// A literal source replacement, not a parser, formatting toggle or escaping
-/// policy. `source` and `range` describe the exact input this plan may replace.
+/// A literal source replacement, not a parser or escaping
+/// policy. `source` and `range` describe the exact input this plan may replace;
+/// `originalSelection` captures the selection that authorized the edit.
 struct MarkdownInsertionPlan: Sendable {
     static let maximumSourceBytes = 1 * 1024 * 1024
     static let maximumSelectionBytes = 64 * 1024
-    static let maximumListLines = 256
+    static let maximumPrefixRows = 256
+    static let maximumListLines = maximumPrefixRows
     let source: String
     let range: NSRange
     let replacement: String
     let selectionAfter: NSRange
+    let originalSelection: NSRange
+    let actionName: String
+    /// When true, native undo returns to `originalSelection` and redo returns
+    /// to `selectionAfter`, instead of the text system's replaced-range choice.
+    let restoresSelectionOnUndo: Bool
+
+    init(source: String, range: NSRange, replacement: String, selectionAfter: NSRange,
+         originalSelection: NSRange? = nil, actionName: String = "Insert Markdown",
+         restoresSelectionOnUndo: Bool = false) {
+        self.source = source
+        self.range = range
+        self.replacement = replacement
+        self.selectionAfter = selectionAfter
+        self.originalSelection = originalSelection ?? range
+        self.actionName = actionName
+        self.restoresSelectionOnUndo = restoresSelectionOnUndo
+    }
 
     static func make(command: MarkdownInsertionCommand, source: String, selection: NSRange) -> Self? {
         let sourceBytes = source.utf8.prefix(maximumSourceBytes + 1).count
@@ -115,7 +134,7 @@ struct MarkdownInsertionPlan: Sendable {
     }
 
     func matches(source: String, selection: NSRange) -> Bool {
-        range == selection && self.source.utf8.elementsEqual(source.utf8)
+        originalSelection == selection && self.source.utf8.elementsEqual(source.utf8)
     }
 
     private static func longestBacktickRun(in body: String) -> Int {

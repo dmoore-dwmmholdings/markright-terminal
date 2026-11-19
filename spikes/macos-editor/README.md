@@ -4,6 +4,8 @@ MRK-39 adds a separate native SwiftUI/AppKit collection/source/recovery workspac
 
 Standalone SwiftUI window around the existing synthetic desktop CodeMirror fixture. This is a macOS shell experiment, not a selected production architecture, Tauri integration, complete Markdown application or native iOS implementation. MRK-9 VoiceOver observation and MRK-12 integrated review remain open.
 
+The local MRK-50 task-marker candidate adds **Toggle task markers** for a caret row or whole-row selection. Undo restores the exact source bytes and selection; the AppKit task-marker checks pass. [Behavior and verification](../../docs/native-task-marker-validation.md).
+
 The separate native workspace can be checked without opening the visible research app:
 
 ```sh

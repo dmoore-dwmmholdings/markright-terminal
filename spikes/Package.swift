@@ -31,7 +31,8 @@ let package = Package(
                 "DocumentSession.swift",
                 "SourceCopyExport.swift",
                 "MarkdownInsertion.swift",
-                "MarkdownTableInsertion.swift"
+                "MarkdownTableInsertion.swift",
+                "TaskMarkerEdit.swift"
             ]
         ),
         .testTarget(
@@ -45,7 +46,8 @@ let package = Package(
                 "NativeMarkdownInsertionTests.swift",
                 "NativeMarkdownStructureInsertionTests.swift",
                 "NativeMarkdownListInsertionTests.swift",
-                "NativeMarkdownTableInsertionTests.swift"
+                "NativeMarkdownTableInsertionTests.swift",
+                "NativeTaskMarkerEditTests.swift"
             ],
             sources: [
                 "NativeTestDirectory.swift",
@@ -61,7 +63,8 @@ let package = Package(
                 "MarkdownInsertionTests.swift",
                 "MarkdownStructureInsertionTests.swift",
                 "MarkdownListInsertionTests.swift",
-                "MarkdownTableInsertionTests.swift"
+                "MarkdownTableInsertionTests.swift",
+                "TaskMarkerEditTests.swift"
             ]
         )
     ],
