@@ -32,7 +32,7 @@ On `main`, the AppKit whole-document workspace scheduled a save on every editor 
 | Playwright (default config) | Pass, 33 passed, 1 skipped |
 | Unsigned macOS app build | Pass |
 | Unsigned iOS build-for-testing | Pass |
-| iOS simulator runtime tests | See the PR description |
+| iOS simulator runtime tests | Not run: the run on a dedicated simulator stayed idle with no test output and was stopped after 10 minutes |
 
 ## Open gates
 

@@ -12,7 +12,7 @@ MRK-50 adds an explicit **Toggle task markers** source action for the caret row 
 
 ## Native source-line selection candidate
 
-MRK-52 adds **Select source lines** to whole-document edit menus. It expands the touched physical rows with their endings and excludes the initial BOM. It changes only the selection: source, undo and autosave stay unchanged. The iOS test bundle builds. See [behavior and verification](../../docs/native-source-line-selection-validation.md).
+MRK-52 adds **Select source lines** to whole-document edit menus. It expands the touched physical rows with their endings and excludes the initial BOM. It changes only the selection: source, undo and autosave stay unchanged. The iOS test bundle builds; the attached simulator tests have not run yet. See [behavior and verification](../../docs/native-source-line-selection-validation.md).
 
 ## Native table source checkpoint
 
