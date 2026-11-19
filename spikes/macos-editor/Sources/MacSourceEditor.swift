@@ -43,6 +43,9 @@ import SwiftUI
             menu.addItem(item)
             menu.addItem(makeTaskMarkerItem())
             menu.addItem(makeSourceLineSelectionItem())
+            let outline = NSMenuItem(title: "Document outline", action: nil, keyEquivalent: "")
+            outline.submenu = makeOutlineMenu()
+            menu.addItem(outline)
         }
         return menu
     }
@@ -71,6 +74,29 @@ import SwiftUI
             !hasMarkedText() && selectedRanges.count == 1
         let plan = available ? SourceLineSelection.make(source: string, selection: selectedRange()) : nil
         return MacSourceNavigationMenuItem(title: SourceLineSelection.title, sourceView: self, plan: plan)
+    }
+
+    /// Literal heading labels; each item carries a selection-only plan captured
+    /// against the exact source and selection, run through applySourceNavigation.
+    func makeOutlineMenu() -> NSMenu {
+        let menu = NSMenu(title: "Document outline")
+        menu.autoenablesItems = false
+        guard window != nil && window?.firstResponder === self && isEditable &&
+            !hasMarkedText() && selectedRanges.count == 1 else {
+            let item = NSMenuItem(title: "Outline unavailable while editor is inactive.", action: nil, keyEquivalent: "")
+            item.isEnabled = false; menu.addItem(item); return menu
+        }
+        let outline = SourceOutline.make(source: string)
+        if let message = outline.message {
+            let item = NSMenuItem(title: message, action: nil, keyEquivalent: "")
+            item.isEnabled = false; menu.addItem(item)
+        } else {
+            for heading in outline.headings {
+                guard let plan = outline.plan(for: heading, selection: selectedRange()) else { continue }
+                menu.addItem(MacSourceNavigationMenuItem(title: heading.menuTitle, sourceView: self, plan: plan))
+            }
+        }
+        return menu
     }
 
     /// Selection-only: moves the native selection and reports it through the

@@ -11,9 +11,9 @@ import UIKit
         for scope in [true, false] {
             let view = SourceTextView()
             view.focusesOnAttachment = false
-            view.allowsSourceLineSelection = scope
+            view.allowsSourceNavigation = scope
             view.text = source; view.selectedRange = selected
-            XCTAssertFalse(view.applySourceLineSelection(plan))
+            XCTAssertFalse(view.applySourceNavigation(plan))
             XCTAssertTrue(SourceSelection.sameText(view.text, source))
             XCTAssertEqual(view.selectedRange, selected)
             let action = view.makeSourceLineSelectionAction()
@@ -31,7 +31,7 @@ import UIKit
         XCTAssertNil(coordinator.textView(view, editMenuForTextIn: NSRange(location: 0, length: 5), suggestedActions: []))
         XCTAssertEqual(view.selectedRange, selected)
         view.allowsMarkdownInsertion = false
-        view.allowsSourceLineSelection = false
+        view.allowsSourceNavigation = false
         let suggested = UIAction(title: "Native suggested action") { _ in }
         let menu = coordinator.textView(view, editMenuForTextIn: selected, suggestedActions: [suggested])
         XCTAssertEqual(menu?.children.count, 1)

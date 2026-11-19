@@ -56,7 +56,7 @@ def main():
         "SourceSelection.swift", "EditorModel.swift",
         "CollectionSearch.swift", "CollectionSearchModel.swift", "CollectionSearchPanel.swift",
         "SourceCopyExport.swift", "SourceCopyTransfer.swift", "SourceCopyExporter.swift",
-        "MarkdownInsertion.swift", "MarkdownTableInsertion.swift", "TaskMarkerEdit.swift", "SourceLineSelection.swift",
+        "MarkdownInsertion.swift", "MarkdownTableInsertion.swift", "TaskMarkerEdit.swift", "SourceLineSelection.swift", "SourceOutline.swift",
     )] + [
         DIRECTORY / "Sources" / "MacSourceEditor.swift",
         DIRECTORY / "Sources" / "MacCollectionWorkspace.swift",
@@ -69,6 +69,7 @@ def main():
         DIRECTORY / "NativeCollectionChecks" / "TableChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "TaskMarkerChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "SourceLineSelectionChecks.swift",
+        DIRECTORY / "NativeCollectionChecks" / "OutlineChecks.swift",
     ]
     require_headroom()
     subprocess.run([

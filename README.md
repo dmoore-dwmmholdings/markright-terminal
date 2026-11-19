@@ -9,6 +9,8 @@ A **local task-marker candidate** adds explicit source completion/clearing on th
 
 A **local source-line selection candidate** adds **Select source lines** to the native whole-document menus. It selects the whole physical rows that the caret or selection touches, with their endings, and never changes the source or undo. Shared, AppKit and web checks pass. [Behavior and verification](docs/native-source-line-selection-validation.md).
 
+A **local source-outline candidate** adds a bounded **Document outline** menu to the native whole-document editors. It lists top-level ATX headings with level, physical line and literal title, and selects the chosen heading without changing the source or undo. Shared, AppKit and web checks pass. [Behavior and verification](docs/native-source-outline-validation.md).
+
 ## Reproduce
 
 - Node 22+: `npm ci --ignore-scripts`, then `npm test`.
