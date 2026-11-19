@@ -41,6 +41,7 @@ import SwiftUI
             let item = NSMenuItem(title: "Insert Markdown", action: nil, keyEquivalent: "")
             item.submenu = makeMarkdownMenu()
             menu.addItem(item)
+            menu.addItem(makeTaskMarkerItem())
         }
         return menu
     }
@@ -57,6 +58,13 @@ import SwiftUI
         return menu
     }
 
+    func makeTaskMarkerItem() -> NSMenuItem {
+        let available = window != nil && window?.firstResponder === self && isEditable &&
+            !hasMarkedText() && selectedRanges.count == 1
+        let plan = available ? TaskMarkerEdit.make(source: string, selection: selectedRange()) : nil
+        return MacMarkdownInsertionMenuItem(title: TaskMarkerEdit.title, sourceView: self, plan: plan)
+    }
+
     @discardableResult func applyMarkdownInsertion(_ plan: MarkdownInsertionPlan) -> Bool {
         guard let window, window.firstResponder === self, isEditable, !hasMarkedText(),
               selectedRanges.count == 1, plan.matches(source: string, selection: selectedRange()) else { return false }
@@ -65,20 +73,47 @@ import SwiftUI
         let undo = undoManager
         undo?.beginUndoGrouping()
         defer { undo?.endUndoGrouping(); breakUndoCoalescing() }
+        // Undo runs a group's actions in reverse order: this first action runs
+        // last on undo (after the text is restored) and the closing one runs
+        // last on redo, so each direction ends on its exact selection.
+        let selectionToken = plan.restoresSelectionOnUndo ? undo.map { TaskSelectionUndoToken(view: self, undo: $0) } : nil
+        if let undo, let selectionToken { registerSelectionUndo(undo, token: selectionToken, select: plan.originalSelection, reverse: nil) }
         insertText(plan.replacement, replacementRange: plan.range)
-        guard SourceSelection.sameText(string, expected), SourceSelection.isValid(plan.selectionAfter, in: string) else { return false }
+        guard SourceSelection.sameText(string, expected), SourceSelection.isValid(plan.selectionAfter, in: string) else {
+            if let undo, let selectionToken { undo.removeAllActions(withTarget: selectionToken) }
+            return false
+        }
         setSelectedRange(plan.selectionAfter)
-        undo?.setActionName("Insert Markdown")
+        if let undo, let selectionToken { registerSelectionUndo(undo, token: selectionToken, select: nil, reverse: plan.selectionAfter) }
+        undo?.setActionName(plan.actionName)
         // Report through the same native coordinator as ordinary typing. AppKit
         // normally emits both edit and final selection notifications as well.
         onTextStateChanged?()
         return true
     }
+
+    /// Registers a selection-only undo step that, when performed, selects
+    /// `select` (if still valid) and registers its mirror for the other direction.
+    /// The token is the only target, so a refused edit can drop just these steps.
+    private func registerSelectionUndo(_ undo: UndoManager, token: TaskSelectionUndoToken, select: NSRange?, reverse: NSRange?) {
+        // The undo manager references its target weakly; the handler retains
+        // the main-actor (hence Sendable) token so later steps still run.
+        undo.registerUndo(withTarget: token) { [token] _ in
+            MainActor.assumeIsolated {
+                guard let view = token.view, let undo = token.undo else { return }
+                if let select, SourceSelection.isValid(select, in: view.string) {
+                    view.setSelectedRange(select)
+                    view.onTextStateChanged?()
+                }
+                view.registerSelectionUndo(undo, token: token, select: reverse, reverse: select)
+            }
+        }
+    }
 }
 
 /// NSMenuItem's target is weak. The retained item targets itself and holds only
 /// a weak view reference, so an old menu cannot retain or redirect an editor.
-@MainActor private final class MacMarkdownInsertionMenuItem: NSMenuItem {
+@MainActor private final class MacMarkdownInsertionMenuItem: NSMenuItem, NSMenuItemValidation {
     private weak var sourceView: MacSourceTextView?
     private let plan: MarkdownInsertionPlan?
 
@@ -96,6 +131,12 @@ import SwiftUI
         target = self
         action = #selector(insertMarkdown(_:))
         isEnabled = false
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        guard let plan, let sourceView, let window = sourceView.window else { return false }
+        return window.firstResponder === sourceView && sourceView.isEditable && !sourceView.hasMarkedText() &&
+            sourceView.selectedRanges.count == 1 && plan.matches(source: sourceView.string, selection: sourceView.selectedRange())
     }
 
     @objc private func insertMarkdown(_ sender: Any?) {
@@ -206,4 +247,11 @@ struct MacSourceEditor: NSViewRepresentable {
             report(text)
         }
     }
+}
+
+/// Weak holder for selection-only undo steps; it never retains the editor.
+@MainActor private final class TaskSelectionUndoToken {
+    weak var view: MacSourceTextView?
+    weak var undo: UndoManager?
+    init(view: MacSourceTextView, undo: UndoManager) { self.view = view; self.undo = undo }
 }

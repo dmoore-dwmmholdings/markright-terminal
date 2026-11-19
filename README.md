@@ -5,6 +5,7 @@ Research prototypes for portable Markright documents and native authoring, track
 The native iOS prototype supports app-owned collections, document editing/autosave, Save As across collections, explicit source/reading modes, selection continuity and recovery checkpoints restored as separate copies. The macOS research app also provides a separate native collection/source/recovery workspace using the shared Apple storage core. Both native collection prototypes include bounded saved-source search, current-source copy export and native source-menu insertion of emphasis, code, references, list markers and table starters/selected-grid conversion with undo. The bundled WebKit fixture and browser shell continue to exercise editor boundaries. Complete rendering, external providers, physical devices, VoiceOver, network isolation and release readiness remain gated.
 
 The publication status is recorded in [docs/github-destination.md](docs/github-destination.md). [The publication review](docs/publication-review.md) explains history privacy cleanup and maps earlier research checkpoint IDs to public commits.
+A **local task-marker candidate** adds explicit source completion/clearing on the caret row or selected whole rows, preserving byte layout and native editing authority. Undo restores the exact source bytes and selection. Shared, AppKit and web checks pass; iOS simulator runtime and release acceptance are still open. [Behavior and verification](docs/native-task-marker-validation.md).
 
 ## Reproduce
 

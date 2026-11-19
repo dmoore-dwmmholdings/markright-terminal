@@ -25,6 +25,16 @@ import UIKit
         return UIMenu(title: "Insert Markdown", children: actions)
     }
 
+    func makeTaskMarkerAction() -> UIAction {
+        let available = allowsMarkdownInsertion && window != nil && isFirstResponder && isEditable &&
+            markedTextRange == nil && selectedRanges.count == 1
+        let plan = available ? TaskMarkerEdit.make(source: text, selection: selectedRange) : nil
+        return UIAction(title: TaskMarkerEdit.title, attributes: plan == nil ? [.disabled] : []) { [weak self, plan] _ in
+            guard let plan else { return }
+            self?.applyMarkdownInsertion(plan)
+        }
+    }
+
     @discardableResult func applyMarkdownInsertion(_ plan: MarkdownInsertionPlan) -> Bool {
         guard allowsMarkdownInsertion, window != nil, isFirstResponder, isEditable, markedTextRange == nil, selectedRanges.count == 1,
               plan.matches(source: text, selection: selectedRange) else { return false }
@@ -32,16 +42,54 @@ import UIKit
         let undo = undoManager
         undo?.beginUndoGrouping()
         defer { undo?.endUndoGrouping() }
-        // The validated current selection is exactly the captured replacement
-        // range. Native insertion owns undo and text-system notifications.
+        // A task-marker caret plan replaces its whole row while capturing the
+        // original caret separately. Other commands retain their original range.
+        // Native insertion still owns text undo and text-system notifications.
+        let expandedSelection = selectedRange != plan.range
+        if expandedSelection { selectedRange = plan.range }
+        // Undo runs a group's actions in reverse order, so this first step runs
+        // after the text is restored and the closing one runs last on redo.
+        let selectionToken = plan.restoresSelectionOnUndo ? undo.map { TaskSelectionUndoToken(view: self, undo: $0) } : nil
+        if let undo, let selectionToken { registerSelectionUndo(undo, token: selectionToken, select: plan.originalSelection, reverse: nil) }
         insertText(plan.replacement)
-        guard SourceSelection.sameText(text, expected), SourceSelection.isValid(plan.selectionAfter, in: text) else { return false }
+        guard SourceSelection.sameText(text, expected), SourceSelection.isValid(plan.selectionAfter, in: text) else {
+            if let undo, let selectionToken { undo.removeAllActions(withTarget: selectionToken) }
+            // Native input can decline an edit. Restore only our own temporary
+            // selection when nothing else changed; never roll back text or a
+            // delegate's distinct selection/composition state.
+            if expandedSelection, SourceSelection.sameText(text, plan.source), markedTextRange == nil,
+               selectedRanges.count == 1, selectedRange == plan.range,
+               SourceSelection.isValid(plan.originalSelection, in: text) {
+                selectedRange = plan.originalSelection
+                (delegate as? NativeSourceEditor.Coordinator)?.report(self)
+            }
+            return false
+        }
         selectedRange = plan.selectionAfter
-        undo?.setActionName("Insert Markdown")
+        if let undo, let selectionToken { registerSelectionUndo(undo, token: selectionToken, select: nil, reverse: plan.selectionAfter) }
+        undo?.setActionName(plan.actionName)
         // UIKit programmatic input paths need not deliver every delegate event.
         // Reuse the existing reporter for exact source and the final selection.
         (delegate as? NativeSourceEditor.Coordinator)?.report(self)
         return true
+    }
+
+    /// Registers a selection-only undo step that, when performed, selects
+    /// `select` (if still valid) and registers its mirror for the other direction.
+    /// The token is the only target, so a refused edit can drop just these steps.
+    private func registerSelectionUndo(_ undo: UndoManager, token: TaskSelectionUndoToken, select: NSRange?, reverse: NSRange?) {
+        // The undo manager references its target weakly; the handler retains
+        // the main-actor (hence Sendable) token so later steps still run.
+        undo.registerUndo(withTarget: token) { [token] _ in
+            MainActor.assumeIsolated {
+                guard let view = token.view, let undo = token.undo else { return }
+                if let select, SourceSelection.isValid(select, in: view.text) {
+                    view.selectedRange = select
+                    (view.delegate as? NativeSourceEditor.Coordinator)?.report(view)
+                }
+                view.registerSelectionUndo(undo, token: token, select: reverse, reverse: select)
+            }
+        }
     }
 }
 
@@ -119,7 +167,7 @@ struct NativeSourceEditor: UIViewRepresentable {
             guard source.allowsMarkdownInsertion else { return UIMenu(children: suggestedActions) }
             guard source.selectedRanges.count == 1,
                   range == source.selectedRange else { return nil }
-            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu()])
+            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu(), source.makeTaskMarkerAction()])
         }
     }
 }
@@ -230,4 +278,11 @@ struct EditorScreen: View {
             }
         }
     }
+}
+
+/// Weak holder for selection-only undo steps; it never retains the editor.
+@MainActor private final class TaskSelectionUndoToken {
+    weak var view: SourceTextView?
+    weak var undo: UndoManager?
+    init(view: SourceTextView, undo: UndoManager) { self.view = view; self.undo = undo }
 }

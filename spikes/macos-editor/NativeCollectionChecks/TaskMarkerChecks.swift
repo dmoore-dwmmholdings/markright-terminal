@@ -1,0 +1,301 @@
+import AppKit
+import Darwin
+import Foundation
+import SwiftUI
+
+private struct TaskMarkerFailure: Error, CustomStringConvertible {
+    let description: String
+    init(_ description: String) { self.description = description }
+}
+@MainActor private func taskRequire(_ value: @autoclosure () -> Bool, _ message: String) throws {
+    if !value() { throw TaskMarkerFailure(message) }
+}
+@MainActor private func taskWait(_ label: String, _ condition: () -> Bool) async throws {
+    let deadline = ContinuousClock.now.advanced(by: .seconds(6))
+    while !condition() {
+        guard ContinuousClock.now < deadline else { throw TaskMarkerFailure("Timed out: " + label) }
+        try await Task.sleep(for: .milliseconds(10))
+    }
+}
+@MainActor private func taskSource(_ root: NSView) -> MacSourceTextView? {
+    if let text = root as? MacSourceTextView { return text }
+    for child in root.subviews { if let text = taskSource(child) { return text } }
+    return nil
+}
+@MainActor private final class TaskUndoDelegate: NSObject, NSWindowDelegate {
+    let manager = UndoManager()
+    func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? { manager }
+}
+@MainActor private final class TaskFocusSentinel: NSView {
+    override var acceptsFirstResponder: Bool { true }
+}
+@MainActor private func taskChoose(_ text: MacSourceTextView) throws {
+    let item = text.makeTaskMarkerItem()
+    try taskRequire(item.title == TaskMarkerEdit.title && item.isEnabled, "Task marker action unavailable")
+    // Exercise root-context-menu auto-validation too: invalid plans must not
+    // become enabled merely because their retained target implements an action.
+    let menu = NSMenu(); menu.addItem(item); menu.update()
+    try taskRequire(item.isEnabled, "Native task menu validation disabled a fresh plan")
+    menu.performActionForItem(at: 0)
+}
+
+/// Exact owned-view state around a refused action. Text is compared as bytes,
+/// including reported model text; source-preserving caret/undo changes matter.
+private struct TaskRefusalSnapshot: Equatable {
+    let source: Data
+    let selections: [NSRange]
+    let reported: Data
+    let reportedSelection: NSRange
+    let focus: ObjectIdentifier?
+    let markedRange: NSRange
+    let canUndo: Bool
+    let canRedo: Bool
+    let undoName: String?
+    let redoName: String?
+
+    @MainActor init(text: MacSourceTextView, reported: String, reportedSelection: NSRange, window: NSWindow) {
+        source = Data(text.string.utf8)
+        selections = text.selectedRanges.map(\.rangeValue)
+        self.reported = Data(reported.utf8)
+        self.reportedSelection = reportedSelection
+        focus = window.firstResponder.map { ObjectIdentifier($0) }
+        markedRange = text.markedRange()
+        canUndo = text.undoManager?.canUndo ?? false
+        canRedo = text.undoManager?.canRedo ?? false
+        undoName = text.undoManager?.undoActionName
+        redoName = text.undoManager?.redoActionName
+    }
+}
+
+@MainActor private func taskMarkerNativeEditing() async throws {
+    let source = "\u{FEFF}- [ ] Cafe\u{301} 😀\r\n  + [X]\tsecond\r\n \t\n* [x] third\r"
+    let checked = "\u{FEFF}- [x] Cafe\u{301} 😀\r\n  + [X]\tsecond\r\n \t\n* [x] third\r"
+    var reported = source, reportedSelection = SourceSelection.beginning
+    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 400), styleMask: [.titled], backing: .buffered, defer: false)
+    window.isReleasedWhenClosed = false
+    let undoDelegate = TaskUndoDelegate(); undoDelegate.manager.groupsByEvent = false
+    window.delegate = undoDelegate
+    let container = NSView(frame: NSRect(x: 0, y: 0, width: 760, height: 400)); window.contentView = container
+    let host = NSHostingView(rootView: MacSourceEditor(value: source, selection: SourceSelection.beginning, isEditable: true) {
+        reported = $0; reportedSelection = $2
+    })
+    host.frame = container.bounds; container.addSubview(host)
+    let sentinel = TaskFocusSentinel(frame: .zero); container.addSubview(sentinel)
+    defer {
+        if let text = taskSource(host) { text.onTextStateChanged = nil; text.delegate = nil }
+        window.makeFirstResponder(nil); undoDelegate.manager.removeAllActions()
+        window.contentView = nil; window.delegate = nil; window.close()
+    }
+    try await taskWait("task editor") { host.layoutSubtreeIfNeeded(); return taskSource(host) != nil }
+    guard let text = taskSource(host) else { throw TaskMarkerFailure("Task source absent") }
+    try taskRequire(window.makeFirstResponder(text), "Cannot focus task source")
+    let undo = undoDelegate.manager, caret = NSRange(location: 10, length: 0)
+    func requireRefusalState(_ label: String, _ action: () throws -> Void) throws {
+        let before = TaskRefusalSnapshot(text: text, reported: reported, reportedSelection: reportedSelection, window: window)
+        try action()
+        let after = TaskRefusalSnapshot(text: text, reported: reported, reportedSelection: reportedSelection, window: window)
+        try taskRequire(before == after, label + " changed source, selection/report, focus, composition or native undo state")
+    }
+    text.setSelectedRange(caret)
+    try taskChoose(text)
+    try taskRequire(SourceSelection.sameText(text.string, checked) && SourceSelection.sameText(reported, checked) &&
+        text.selectedRange() == caret && reportedSelection == caret && window.firstResponder === text &&
+        undo.undoActionName == TaskMarkerEdit.title, "Caret task edit lost exact source, caret, focus or named undo")
+    // Exact undo: the original UTF-8 bytes and the original caret, not the
+    // replaced whole-row range AppKit would otherwise select. Repeated cycles
+    // must stay exact in both directions.
+    let sourceBytes = Array(source.utf8), checkedBytes = Array(checked.utf8)
+    for cycle in 1...3 {
+        undo.undo()
+        try taskRequire(Array(text.string.utf8) == sourceBytes && Array(reported.utf8) == sourceBytes,
+                        "Task undo lost original bytes (cycle \(cycle))")
+        try taskRequire(text.selectedRange() == caret && reportedSelection == caret && window.firstResponder === text,
+                        "Task undo did not restore the original caret (cycle \(cycle)): \(text.selectedRange())")
+        try taskRequire(undo.redoActionName == TaskMarkerEdit.title, "Task redo lost its action name")
+        undo.redo()
+        try taskRequire(Array(text.string.utf8) == checkedBytes && Array(reported.utf8) == checkedBytes,
+                        "Task redo lost exact bytes (cycle \(cycle))")
+        try taskRequire(text.selectedRange() == caret && reportedSelection == caret,
+                        "Task redo did not restore the post-edit caret (cycle \(cycle)): \(text.selectedRange())")
+    }
+    undo.undo()
+    try taskRequire(!undo.canUndo, "Task edit left an extra selection-only undo step")
+    let batch = NSRange(location: 0, length: source.utf16.count)
+    text.setSelectedRange(batch); try taskChoose(text)
+    try taskRequire(SourceSelection.sameText(text.string, checked) && text.selectedRange() == batch, "Mixed task batch did not check only unchecked states")
+    try taskChoose(text)
+    let cleared = "\u{FEFF}- [ ] Cafe\u{301} 😀\r\n  + [ ]\tsecond\r\n \t\n* [ ] third\r"
+    try taskRequire(SourceSelection.sameText(text.string, cleared) && SourceSelection.sameText(reported, cleared), "Checked task batch did not clear x/X")
+    undo.undo()
+    try taskRequire(Array(text.string.utf8) == checkedBytes && text.selectedRange() == batch && reportedSelection == batch,
+                    "Batch clear undo lost exact bytes or the whole-row selection")
+    undo.undo()
+    try taskRequire(Array(text.string.utf8) == sourceBytes && text.selectedRange() == batch && reportedSelection == batch,
+                    "Batch task edits did not have separate exact undo steps")
+    undo.redo(); undo.redo()
+    try taskRequire(SourceSelection.sameText(text.string, cleared) && text.selectedRange() == batch, "Batch redo lost exact state")
+    undo.undo(); undo.undo()
+    // A partial-row selection on a later row: undo must restore exactly it.
+    let secondRow = (source as NSString).range(of: "  + [X]\tsecond\r\n \t\n* [x] third\r")
+    text.setSelectedRange(secondRow); try taskChoose(text)
+    let secondCleared = "\u{FEFF}- [ ] Cafe\u{301} 😀\r\n  + [ ]\tsecond\r\n \t\n* [ ] third\r"
+    try taskRequire(SourceSelection.sameText(text.string, secondCleared) && text.selectedRange() == secondRow, "Later-row batch did not clear")
+    undo.undo()
+    try taskRequire(Array(text.string.utf8) == sourceBytes && text.selectedRange() == secondRow && reportedSelection == secondRow,
+                    "Later-row batch undo lost exact bytes or selection")
+    text.setSelectedRange(caret); try taskChoose(text)
+    undo.beginUndoGrouping(); text.insertText("typed", replacementRange: NSRange(location: NSNotFound, length: 0)); undo.endUndoGrouping()
+    undo.undo()
+    try taskRequire(SourceSelection.sameText(text.string, checked), "Typing undo consumed task edit")
+    undo.undo()
+    try taskRequire(SourceSelection.sameText(text.string, source), "Task undo did not remain separate from typing")
+    undo.redo(); undo.redo(); undo.undo(); undo.undo()
+    text.setSelectedRange(caret)
+    let staleCaretItem = text.makeTaskMarkerItem()
+    try taskRequire(staleCaretItem.isEnabled, "Stale-caret task control was not initially available")
+    let staleCaret = NSMenu(); staleCaret.autoenablesItems = false; staleCaret.addItem(staleCaretItem)
+    // Location 11 would split "e" + U+0301 and AppKit would snap it back to
+    // the original caret, so use the preceding grapheme boundary instead.
+    let staleCaretRange = NSRange(location: caret.location - 1, length: 0)
+    text.setSelectedRange(staleCaretRange)
+    try taskRequire(text.selectedRange() == staleCaretRange, "Stale-caret setup did not move the caret")
+    try requireRefusalState("Retained stale-caret task action") { staleCaret.performActionForItem(at: 0) }
+    try taskRequire(SourceSelection.sameText(text.string, source), "Retained task action ignored stale caret")
+    text.setSelectedRange(caret)
+    let staleSourceItem = text.makeTaskMarkerItem()
+    try taskRequire(staleSourceItem.isEnabled, "Stale-source task control was not initially available")
+    let staleSource = NSMenu(); staleSource.autoenablesItems = false; staleSource.addItem(staleSourceItem)
+    undo.beginUndoGrouping(); text.insertText("tail", replacementRange: NSRange(location: source.utf16.count, length: 0)); undo.endUndoGrouping()
+    text.setSelectedRange(caret)
+    try requireRefusalState("Retained stale-source task action") { staleSource.performActionForItem(at: 0) }
+    try taskRequire(SourceSelection.sameText(text.string, source + "tail"), "Retained task action ignored stale source")
+    undo.undo(); text.setSelectedRange(caret)
+    guard let plan = TaskMarkerEdit.make(source: source, selection: caret) else { throw TaskMarkerFailure("Task guard plan absent") }
+    text.isEditable = false
+    try taskRequire(window.makeFirstResponder(text) && plan.matches(source: text.string, selection: text.selectedRange()),
+                    "Read-only task control lost matching plan or source focus")
+    let inactiveItem = text.makeTaskMarkerItem(), inactiveMenu = NSMenu()
+    inactiveMenu.addItem(inactiveItem); inactiveMenu.update()
+    try taskRequire(!inactiveItem.isEnabled, "Automatic root menu validation enabled a refused task edit")
+    try requireRefusalState("Read-only task action") {
+        try taskRequire(!text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(plan), "Read-only task action accepted")
+    }
+    text.isEditable = true
+    try taskRequire(window.makeFirstResponder(sentinel) && plan.matches(source: text.string, selection: text.selectedRange()),
+                    "Cannot prepare non-source task focus with a matching plan")
+    try requireRefusalState("Non-source-focus task action") {
+        try taskRequire(!text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(plan) && window.firstResponder === sentinel,
+                        "Task action took non-source focus")
+    }
+    try taskRequire(window.makeFirstResponder(text), "Cannot restore task focus")
+    let secondTaskRow = (source as NSString).range(of: "  + [X]\tsecond")
+    text.setSelectedRanges([NSValue(range: caret), NSValue(range: secondTaskRow)], affinity: .downstream, stillSelecting: false)
+    guard let multiplePlan = TaskMarkerEdit.make(source: text.string, selection: text.selectedRange()) else {
+        throw TaskMarkerFailure("Multiple-selection task control lacks a valid current primary-row plan")
+    }
+    try taskRequire(multiplePlan.matches(source: text.string, selection: text.selectedRange()), "Multiple-selection task control is stale")
+    try requireRefusalState("Multiple-selection task action") {
+        try taskRequire(text.selectedRanges.count == 2 && !text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(multiplePlan), "Multiple-selection task action accepted")
+    }
+    text.setSelectedRange(caret); text.breakUndoCoalescing(); undo.removeAllActions(); undo.groupsByEvent = true
+    text.setMarkedText("仮", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: NSNotFound, length: 0))
+    guard let markedPlan = TaskMarkerEdit.make(source: text.string, selection: text.selectedRange()) else {
+        throw TaskMarkerFailure("Composing task control lacks a valid current-row plan")
+    }
+    try taskRequire(markedPlan.matches(source: text.string, selection: text.selectedRange()), "Composing task control is stale")
+    try requireRefusalState("Composing task action") {
+        try taskRequire(text.hasMarkedText() && !text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(markedPlan), "Task action ended or edited composition")
+    }
+    text.unmarkText()
+    // Restore only owned synthetic text before testing detached controls.
+    text.string = source; text.setSelectedRange(caret)
+    try taskRequire(text.makeTaskMarkerItem().isEnabled, "Task detached positive control failed")
+    host.removeFromSuperview()
+    try requireRefusalState("Detached task action") {
+        try taskRequire(text.window == nil && !text.makeTaskMarkerItem().isEnabled && !text.applyMarkdownInsertion(plan), "Detached task action accepted")
+    }
+    try taskRequire(!window.isVisible && !NSApplication.shared.isActive, "Task probe activated/showed a window")
+}
+
+@MainActor private func taskMarkerWorkspaceRecovery() async throws {
+    guard let physical = FileManager.default.temporaryDirectory.path.withCString({ realpath($0, nil) }) else {
+        throw TaskMarkerFailure("Cannot resolve synthetic root")
+    }
+    let root = URL(fileURLWithPath: String(cString: physical)).appendingPathComponent("MarkrightTaskMarkerChecks-" + UUID().uuidString, isDirectory: true)
+    free(physical)
+    defer {
+        do { if FileManager.default.fileExists(atPath: root.path) { try FileManager.default.removeItem(at: root) } }
+        catch { FileHandle.standardError.write(Data("Task fixture cleanup warning: \(error)\n".utf8)) }
+    }
+    let source = "\u{FEFF}- [ ] Cafe\u{301} 😀\r\n+ [X] second\r"
+    let checked = "\u{FEFF}- [x] Cafe\u{301} 😀\r\n+ [X] second\r"
+    let workspace = MacCollectionWorkspaceModel(store: CollectionStore(root: root))
+    _ = await workspace.createCollection("Editing")
+    _ = await workspace.createDocument(name: "Task.md", source: source)
+    guard let session = workspace.session else { throw TaskMarkerFailure("Task session missing") }
+    let controller = MacCollectionWorkspaceWindowController(model: workspace, allowsSourceCopyExportPresentation: false)
+    guard let window = controller.window, let host = window.contentView else { throw TaskMarkerFailure("Task workspace absent") }
+    defer {
+        if let text = taskSource(host) { text.onTextStateChanged = nil; text.delegate = nil }
+        window.delegate = nil; window.contentViewController = nil; window.close()
+    }
+    try await taskWait("task workspace") { host.layoutSubtreeIfNeeded(); return !workspace.isBusy && taskSource(host)?.isEditable == true }
+    guard let text = taskSource(host) else { throw TaskMarkerFailure("Workspace task source absent") }
+    try taskRequire(window.makeFirstResponder(text), "Cannot focus workspace task source")
+    guard let undo = text.undoManager else { throw TaskMarkerFailure("Task workspace undo manager missing") }
+    text.breakUndoCoalescing(); undo.removeAllActions(); undo.groupsByEvent = false
+    let baseline = session.document.baseline
+    let generation = session.model.editingGeneration, caret = NSRange(location: 9, length: 0)
+    let file = root.appendingPathComponent("Editing/Task.md")
+    text.setSelectedRange(caret); try taskChoose(text)
+    try await taskWait("task normal autosave") { !session.dirty && !session.isSaving && session.errorMessage == nil && SourceSelection.sameText(session.model.source, checked) }
+    let saved = try Data(contentsOf: file)
+    try taskRequire(saved == Data(checked.utf8) && text.selectedRange() == caret && session.model.documentSelection == caret &&
+        taskSource(host) === text && workspace.session === session && session.model.editingGeneration == generation && window.firstResponder === text,
+        "Task edit did not use ordinary exact-source autosave or retain session/editor/caret/focus")
+    let external = Data("outside source preserved\r\n".utf8)
+    try external.write(to: file, options: .atomic)
+    text.setSelectedRange(caret); try taskChoose(text)
+    try await taskWait("task conflict recovery") { session.errorMessage != nil && session.canKeepRecovery && !session.isSaving && SourceSelection.sameText(session.model.source, source) }
+    let checkpoint = session.recoveryDraft?.id
+    try taskRequire(checkpoint != nil, "Task conflict lacks recovery checkpoint")
+    try await Task.sleep(for: .milliseconds(650))
+    let disk = try Data(contentsOf: file)
+    let recovery = try await workspace.store.recoveries()
+    try taskRequire(disk == external && recovery.drafts.contains { $0.id == checkpoint && SourceSelection.sameText($0.source, source) } &&
+        session.document.baseline == Data(checked.utf8) && baseline == Data(source.utf8) &&
+        session.recoveryDraft?.id == checkpoint && session.canKeepRecovery && session.dirty && !session.canClose && !session.isSaving &&
+        taskSource(host) === text && workspace.session === session && session.model.editingGeneration == generation &&
+        session.model.documentSelection == caret && text.selectedRange() == caret && window.firstResponder === text,
+        "Task edit overwrote external original or lost settled current full-source recovery/caret/editor")
+    // Even undo back to the last saved bytes remains a new source revision:
+    // an externally divergent file cannot be acknowledged or overwritten.
+    var previousCheckpoint = checkpoint
+    for (operation, expected) in [("undo", checked), ("redo", source)] {
+        try taskRequire(operation == "undo" ? undo.canUndo : undo.canRedo, "Task conflict lost native " + operation)
+        if operation == "undo" { undo.undo() } else { undo.redo() }
+        try await taskWait("task conflict " + operation + " recovery") {
+            SourceSelection.sameText(session.model.source, expected) && session.canKeepRecovery && !session.isSaving
+        }
+        let currentID = session.recoveryDraft?.id
+        try taskRequire(currentID != nil && currentID != previousCheckpoint, "Task conflict " + operation + " retained a stale checkpoint")
+        try await Task.sleep(for: .milliseconds(650))
+        let currentDisk = try Data(contentsOf: file)
+        let currentRecovery = try await workspace.store.recoveries()
+        try taskRequire(currentDisk == external && currentRecovery.drafts.contains {
+            $0.id == currentID && SourceSelection.sameText($0.source, expected)
+        } && session.recoveryDraft?.id == currentID && session.canKeepRecovery && session.dirty && !session.canClose &&
+            !session.isSaving && session.document.baseline == Data(checked.utf8) &&
+            taskSource(host) === text && workspace.session === session && session.model.editingGeneration == generation &&
+            SourceSelection.sameText(text.string, expected) && window.firstResponder === text,
+            "Task conflict " + operation + " lost current full-source recovery or overwrote/acknowledged external original")
+        previousCheckpoint = currentID
+    }
+}
+
+@MainActor func runTaskMarkerChecks() async throws {
+    try await taskMarkerNativeEditing()
+    try await taskMarkerWorkspaceRecovery()
+    print("PASS native task markers: actual caret/batch menu targets, exact BOM/NFD/emoji/mixed endings, x/X states, retained caret/model/focus, named separate insertion/typing undo-redo, stale/read-only/non-source/multiple/marked/detached guards; normal autosave and settled conflicted edit/undo/redo full-source recovery without overwriting original")
+    print("Passed 1 native task-marker AppKit group. Authored actions only; OS input/IME, UIKit runtime, VoiceOver, parser/context/security and release acceptance remain open.")
+}
