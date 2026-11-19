@@ -1,5 +1,9 @@
 # Native collection and editing validation
 
+## Companion preview (MRK-46)
+
+MRK-46 adds opt-in partial inline preview as a 240-point panel below the whole-document Source field, with retained source-mode rows. Active and unsupported units stay literal; attributed link targets are removed. Evidence and open gates are in `docs/native-companion-preview-validation.md`.
+
 Native SwiftUI collection browsing and native UITextView source/preview/reading editing. The app-owned collection validation is tracked by MRK-36, bounded recovery by MRK-37 and Save As by MRK-38; editor interaction research remains MRK-9. Automated runs use synthetic documents on the dedicated simulator, with no sync, script execution, signing account or physical devices.
 
 The default launch now creates and reopens app-owned collection folders and UTF-8 documents with autosave. See [the storage contract and limitations](../../docs/native-collections-validation.md). External folders, full identity, crash-before-checkpoint recovery and production MRK-18 acceptance remain gated. Use `--editor-fixture` for the historical sample editor, including with `--static-calculator` or `--large-document`.

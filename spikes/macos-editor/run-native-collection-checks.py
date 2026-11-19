@@ -2,12 +2,14 @@
 """Build and run the separate, invisible AppKit collection checks on macOS."""
 
 from pathlib import Path
+import argparse
 import os
 import platform
 import plistlib
 import shutil
 import subprocess
 import sys
+import uuid
 
 
 DIRECTORY = Path(__file__).resolve().parent
@@ -23,6 +25,12 @@ def require_headroom():
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--preview-snapshots", action="store_true",
+                        help="Capture only synthetic offscreen preview views into a fresh owned diagnostic directory.")
+    parser.add_argument("--require-rendered-observation", action="store_true",
+                        help="Fail when hidden-host semantic AX cannot observe the rendered preview (open gate).")
+    arguments = parser.parse_args()
     if sys.platform != "darwin":
         raise RuntimeError("The native collection checks require macOS and the Xcode command line tools.")
     require_headroom()
@@ -57,6 +65,7 @@ def main():
         "CollectionSearch.swift", "CollectionSearchModel.swift", "CollectionSearchPanel.swift",
         "SourceCopyExport.swift", "SourceCopyTransfer.swift", "SourceCopyExporter.swift",
         "MarkdownInsertion.swift", "MarkdownTableInsertion.swift", "TaskMarkerEdit.swift", "SourceLineSelection.swift", "SourceOutline.swift",
+        "SourcePreviewProjection.swift", "SourcePreviewPanel.swift",
     )] + [
         DIRECTORY / "Sources" / "MacSourceEditor.swift",
         DIRECTORY / "Sources" / "MacCollectionWorkspace.swift",
@@ -70,10 +79,11 @@ def main():
         DIRECTORY / "NativeCollectionChecks" / "TaskMarkerChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "SourceLineSelectionChecks.swift",
         DIRECTORY / "NativeCollectionChecks" / "OutlineChecks.swift",
+        DIRECTORY / "NativeCollectionChecks" / "PreviewChecks.swift",
     ]
     require_headroom()
     subprocess.run([
-        "/usr/bin/xcrun", "swiftc", "-swift-version", "6", "-warnings-as-errors",
+        "/usr/bin/xcrun", "swiftc", "-j", "2", "-swift-version", "6", "-warnings-as-errors",
         "-parse-as-library", "-target", f"{platform.machine()}-apple-macos14.0",
         "-module-cache-path", str(cache), *map(str, sources), "-o", str(executable),
     ], cwd=ROOT, check=True, timeout=TIMEOUT_SECONDS)
@@ -83,6 +93,15 @@ def main():
     # Run this private executable directly; never open/activate the research app.
     environment = dict(os.environ)
     environment["NSUnbufferedIO"] = "YES"
+    environment.pop("MARKRIGHT_PREVIEW_SNAPSHOTS", None)
+    environment.pop("MARKRIGHT_PREVIEW_REQUIRE_RENDERED", None)
+    if arguments.require_rendered_observation:
+        environment["MARKRIGHT_PREVIEW_REQUIRE_RENDERED"] = "1"
+    if arguments.preview_snapshots:
+        snapshots = BUILD / ("preview-snapshots-" + str(uuid.uuid4()))
+        snapshots.mkdir(exist_ok=False)
+        environment["MARKRIGHT_PREVIEW_SNAPSHOTS"] = str(snapshots)
+        print("Synthetic preview snapshots: " + str(snapshots), flush=True)
     subprocess.run([str(executable)], cwd=ROOT, env=environment, check=True, timeout=TIMEOUT_SECONDS)
 
 
