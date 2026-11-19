@@ -100,6 +100,55 @@ final class SourceOutlineTests: XCTestCase {
         XCTAssertEqual(SourceOutline.make(source: "# a\u{0007}b\u{2028}c").headings[0].title, "a b c")
     }
 
+    func testOversizedCombiningTitleKeepsCompleteBOMSourceAndNavigationRange() throws {
+        let huge = "e" + String(repeating: "\u{301}", count: 1_024)
+        XCTAssertEqual(huge.count, 1, "Fixture must exercise a single large grapheme")
+        let source = "\u{FEFF}# " + huge + "\r\n## Cafe\u{301} 😀\r"
+        let report = SourceOutline.make(source: source)
+        XCTAssertNil(report.message)
+        XCTAssertEqual(report.headings.count, 2)
+        let heading = try XCTUnwrap(report.headings.first)
+        XCTAssertEqual(heading.title, "…")
+        XCTAssertEqual(heading.range, NSRange(location: 1, length: 2 + huge.utf16.count))
+        XCTAssertEqual(heading.line, 1)
+        XCTAssertEqual(report.headings[1].line, 2)
+        XCTAssertTrue(report.source.utf8.elementsEqual(source.utf8))
+        XCTAssertTrue((source as NSString).substring(with: heading.range).utf8.elementsEqual(("# " + huge).utf8))
+        let plan = try XCTUnwrap(report.plan(for: heading, selection: SourceSelection.beginning))
+        XCTAssertEqual(plan.destination, heading.range)
+        XCTAssertTrue(plan.matches(source: source, selection: SourceSelection.beginning))
+        XCTAssertTrue(report.headings[1].title.utf8.elementsEqual("Cafe\u{301} 😀".utf8))
+        XCTAssertTrue(heading.menuTitle.hasSuffix(": …"))
+    }
+
+    func testTitleUTF16BoundaryKeepsWholeCombiningAndSupplementaryGraphemes() throws {
+        XCTAssertEqual(SourceOutline.maximumTitleCharacters, 80)
+        XCTAssertEqual(SourceOutline.maximumTitleUTF16, 320)
+        let prefix = String(repeating: "a", count: SourceOutline.maximumTitleCharacters - 1)
+        let remaining = SourceOutline.maximumTitleUTF16 - prefix.utf16.count
+        let exact = prefix + "e" + String(repeating: "\u{301}", count: remaining - 1)
+        XCTAssertEqual(exact.count, SourceOutline.maximumTitleCharacters)
+        XCTAssertEqual(exact.utf16.count, SourceOutline.maximumTitleUTF16)
+        let exactHeading = try XCTUnwrap(SourceOutline.make(source: "# " + exact).headings.first)
+        XCTAssertTrue(exactHeading.title.utf8.elementsEqual(exact.utf8))
+        let over = exact + "\u{301}"
+        XCTAssertEqual(over.count, SourceOutline.maximumTitleCharacters)
+        let overHeading = try XCTUnwrap(SourceOutline.make(source: "# " + over).headings.first)
+        XCTAssertEqual(overHeading.title, prefix + "…", "A clipped grapheme must be omitted whole")
+        XCTAssertEqual(overHeading.range.length, 2 + over.utf16.count)
+
+        let flags = String(repeating: "🇨🇦", count: SourceOutline.maximumTitleCharacters)
+        XCTAssertEqual(flags.utf16.count, SourceOutline.maximumTitleUTF16)
+        let flagHeading = try XCTUnwrap(SourceOutline.make(source: "# " + flags).headings.first)
+        XCTAssertTrue(flagHeading.title.utf8.elementsEqual(flags.utf8))
+        let extraHeading = try XCTUnwrap(SourceOutline.make(source: "# " + flags + "🇨🇦").headings.first)
+        XCTAssertEqual(extraHeading.title, flags + "…")
+        for heading in [exactHeading, overHeading, flagHeading, extraHeading] {
+            XCTAssertLessThanOrEqual(heading.title.utf16.count, SourceOutline.maximumTitleUTF16 + 1)
+            XCTAssertLessThanOrEqual(heading.title.count, SourceOutline.maximumTitleCharacters + 1)
+        }
+    }
+
     func testEmptyAndUnsupportedHeadingFormsAreExplicit() {
         for source in ["", "\u{FEFF}", "Title\n===\n", "> # Nested\n", "- # Item\n"] {
             let report = SourceOutline.make(source: source)
