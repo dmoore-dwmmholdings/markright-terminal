@@ -28,6 +28,7 @@ targets:
       - path: ../ios-editor/Sources/MarkdownInsertion.swift
       - path: ../ios-editor/Sources/MarkdownTableInsertion.swift
       - path: ../ios-editor/Sources/TaskMarkerEdit.swift
+      - path: ../ios-editor/Sources/SourceLineSelection.swift
       - path: Resources/Editor
         type: folder
         buildPhase: resources

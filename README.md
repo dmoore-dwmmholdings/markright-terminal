@@ -7,6 +7,8 @@ The native iOS prototype supports app-owned collections, document editing/autosa
 The publication status is recorded in [docs/github-destination.md](docs/github-destination.md). [The publication review](docs/publication-review.md) explains history privacy cleanup and maps earlier research checkpoint IDs to public commits.
 A **local task-marker candidate** adds explicit source completion/clearing on the caret row or selected whole rows, preserving byte layout and native editing authority. Undo restores the exact source bytes and selection. Shared, AppKit and web checks pass; iOS simulator runtime and release acceptance are still open. [Behavior and verification](docs/native-task-marker-validation.md).
 
+A **local source-line selection candidate** adds **Select source lines** to the native whole-document menus. It selects the whole physical rows that the caret or selection touches, with their endings, and never changes the source or undo. Shared, AppKit and web checks pass. [Behavior and verification](docs/native-source-line-selection-validation.md).
+
 ## Reproduce
 
 - Node 22+: `npm ci --ignore-scripts`, then `npm test`.

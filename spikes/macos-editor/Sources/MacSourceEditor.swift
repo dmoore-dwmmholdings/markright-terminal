@@ -42,6 +42,7 @@ import SwiftUI
             item.submenu = makeMarkdownMenu()
             menu.addItem(item)
             menu.addItem(makeTaskMarkerItem())
+            menu.addItem(makeSourceLineSelectionItem())
         }
         return menu
     }
@@ -63,6 +64,24 @@ import SwiftUI
             !hasMarkedText() && selectedRanges.count == 1
         let plan = available ? TaskMarkerEdit.make(source: string, selection: selectedRange()) : nil
         return MacMarkdownInsertionMenuItem(title: TaskMarkerEdit.title, sourceView: self, plan: plan)
+    }
+
+    func makeSourceLineSelectionItem() -> NSMenuItem {
+        let available = window != nil && window?.firstResponder === self && isEditable &&
+            !hasMarkedText() && selectedRanges.count == 1
+        let plan = available ? SourceLineSelection.make(source: string, selection: selectedRange()) : nil
+        return MacSourceNavigationMenuItem(title: SourceLineSelection.title, sourceView: self, plan: plan)
+    }
+
+    /// Selection-only: moves the native selection and reports it through the
+    /// same coordinator as typing. No source edit, undo step or generation change.
+    @discardableResult func applySourceNavigation(_ plan: SourceNavigationPlan) -> Bool {
+        guard let window, window.firstResponder === self, isEditable, !hasMarkedText(),
+              selectedRanges.count == 1, plan.matches(source: string, selection: selectedRange()) else { return false }
+        setSelectedRange(plan.destination)
+        scrollRangeToVisible(plan.destination)
+        onTextStateChanged?()
+        return selectedRange() == plan.destination
     }
 
     @discardableResult func applyMarkdownInsertion(_ plan: MarkdownInsertionPlan) -> Bool {
@@ -142,6 +161,35 @@ import SwiftUI
     @objc private func insertMarkdown(_ sender: Any?) {
         guard let plan else { return }
         sourceView?.applyMarkdownInsertion(plan)
+    }
+}
+
+/// The item retains its target (itself), but never the source view. Captured
+/// plans are checked again by the same selection-only native execution path.
+@MainActor private final class MacSourceNavigationMenuItem: NSMenuItem, NSMenuItemValidation {
+    private weak var sourceView: MacSourceTextView?
+    private let plan: SourceNavigationPlan?
+
+    init(title: String, sourceView: MacSourceTextView, plan: SourceNavigationPlan?) {
+        self.sourceView = sourceView; self.plan = plan
+        super.init(title: title, action: #selector(navigate(_:)), keyEquivalent: "")
+        target = self
+        isEnabled = plan != nil
+    }
+    required init(coder: NSCoder) {
+        plan = nil
+        super.init(coder: coder)
+        isEnabled = false
+    }
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        guard let plan, let sourceView, let window = sourceView.window else { return false }
+        return window.firstResponder === sourceView && sourceView.isEditable && !sourceView.hasMarkedText() &&
+            sourceView.selectedRanges.count == 1 && plan.matches(source: sourceView.string, selection: sourceView.selectedRange())
+    }
+
+    @objc private func navigate(_ sender: Any?) {
+        guard let plan else { return }
+        sourceView?.applySourceNavigation(plan)
     }
 }
 
