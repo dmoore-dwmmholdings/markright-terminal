@@ -2,6 +2,10 @@
 
 Local CodeMirror 6/Lezer Markdown candidate. This is not a Tauri application, full Markdown renderer or selected production framework. No document scripts execute; source is shown as text, never injected as HTML. It does not implement Markright file resolution/includes or use the native parser yet.
 
+## Input-to-paint measurement
+
+Opt-in: `node_modules/.bin/playwright test -c spikes/desktop/playwright.latency.config.mjs` (server on 127.0.0.1:18792). It types into a 1 MB mixed document, checks exact source, and writes p50/p95/max per engine to `spikes/desktop/build/latency/latency-<engine>.json`. Set `MARKRIGHT_ENFORCE_P95_MS=50` to fail above a budget. Results and limits are in ADR 0002.
+
 ## Reading mode
 
 The explicit **Reading mode** control disables editing and applies the existing partial preview to every line. Source mode remains editable. Leaving reading mode restores the prior live/source editing mode, exact source metadata, directional selection and history. Parsing still runs; this is not a complete renderer or performance fallback.

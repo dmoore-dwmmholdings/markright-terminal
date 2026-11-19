@@ -1,6 +1,32 @@
 # ADR 0002: active-line projection feasibility
 
-Status: MRK-9 in progress, not UI acceptance.
+Status: MRK-9 in progress, not UI acceptance. Automatable spike evidence is complete; the remaining gates below need an attended person or physical hardware.
+
+## Desktop input-to-paint measurement — November 19, 2026
+
+`spikes/desktop/latency.spec.mjs` (opt-in config `playwright.latency.config.mjs`) types 120 measured keystrokes (after 10 warm-up keys) into the middle of a 1,000,000-byte mixed Markdown document (headings, emphasis, links, fences, tables, quotes, lists). Each sample runs from a capture-phase `keydown` to a task posted after the next `requestAnimationFrame`, which approximates input-to-paint in the page. The test asserts that every keystroke lands once at the caret with no other source change; timing is recorded, not asserted, unless `MARKRIGHT_ENFORCE_P95_MS` is set.
+
+One run on this Mac, headless, machine load average about 17–19:
+
+| Engine | p50 | p95 | max | Event Timing keydown p95 |
+| --- | --- | --- | --- | --- |
+| Chromium headless shell | 14.2 ms | 17.7 ms | 25.2 ms | 24 ms |
+| WebKit (Playwright build) | 21 ms | 32 ms | 54 ms | 32 ms |
+
+Both are below the provisional 50 ms p95 budget (MRK-R21.AC1) for this fixture. This is the first end-to-end page measurement, but it is NOT acceptance: headless frames are not compositor presentation on named baseline hardware, a loaded shared machine skews results, and no Tauri/WebView2/WebKitGTK shell, Windows/Linux host or native iOS paint path was measured. Native iOS 1 MB evidence remains an edit smoke without p95 timing.
+
+## MRK-9 evidence and open gates
+
+| Area | Evidence on main | Open gate (who can close it) |
+| --- | --- | --- |
+| Active line + minimum enclosing block (R8.AC1/AC2) | Desktop 33 browser checks; native 33 native/model + 12 UI tests on simulator | Full renderer, includes/scripts behavior (MRK-12 and later) |
+| Source mapping contract | Consolidated contract below; BOM, mixed endings, UTF-16 bounds, selection continuity | Shared native parser bridge (MRK-12) |
+| Explicit source and reading modes | Desktop and native, with composition and stale-callback guards | None for the spike |
+| IME (R8.AC3) | Programmatic marked text and CDP composition; WebKit CDP case skipped | Real OS IME on desktop and iOS (attended person) |
+| VoiceOver / screen readers (R15.AC1, R21.AC2) | Automated light/dark accessibility audits pass; one unattended Mac attempt had no reliable output | Attended VoiceOver run on Mac and iOS (owner or listener) |
+| 1 MB documents (R21.AC1) | Desktop p95 above; native 1 MB edit/read smoke | Native iOS p95, named baseline hardware |
+| Shell/core comparison (R14) | Table below; Tauri recommended, not frozen | Freeze decision in MRK-12; Windows/Linux shells |
+| Physical iPhone/iPad (R15) | Simulator only | Physical device run (owner hardware) |
 
 ## Native selection continuity — November 10, 2026
 
