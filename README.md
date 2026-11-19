@@ -13,6 +13,8 @@ A **local source-outline candidate** adds a bounded **Document outline** menu to
 
 A **local outline-label candidate** bounds native heading labels by both Characters and UTF-16 units while preserving complete source/navigation ranges. Compilation and execution are pending. [Behavior and evidence status](docs/native-outline-label-validation.md).
 
+A **native companion preview** (MRK-46) adds opt-in partial inline preview beside the Mac source editor and below iOS whole-document Source, plus a Mac open-document marker. Data retention passes in the native runner; rendered/AX observation and runtime gates stay open. See `docs/native-companion-preview-validation.md`.
+
 ## Reproduce
 
 - Node 22+: `npm ci --ignore-scripts`, then `npm test`.

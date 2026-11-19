@@ -1,5 +1,9 @@
 # macOS native collections and system-WKWebView research
 
+## Companion preview (MRK-46)
+
+MRK-46 adds opt-in partial inline preview beside the source editor and a current-document sidebar marker. Active and unsupported units stay literal; attributed link targets are removed. Evidence and open gates are in `docs/native-companion-preview-validation.md`.
+
 MRK-39 adds a separate native SwiftUI/AppKit collection/source/recovery workspace through **Open collections**. It shares the iOS storage/session model and supports app-owned create/open/autosave, cross-collection Save As, inert recovery preview and separate-copy restore with close/quit guards. It does not grant WebKit access to stored documents. See [the workflow, verification and limits](../../docs/native-macos-collections-validation.md). External selected folders, full rendering and production desktop architecture remain open. The existing visible Debug app has not been rebuilt or restarted; verification uses the separate Verification product.
 
 Standalone SwiftUI window around the existing synthetic desktop CodeMirror fixture. This is a macOS shell experiment, not a selected production architecture, Tauri integration, complete Markdown application or native iOS implementation. MRK-9 VoiceOver observation and MRK-12 integrated review remain open.

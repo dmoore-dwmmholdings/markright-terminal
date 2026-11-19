@@ -19,7 +19,8 @@ let package = Package(
                 "RecoveryWorkspace.swift",
                 "SaveDocumentAsSheet.swift",
                 "SourceCopyTransfer.swift",
-                "SourceCopyExporter.swift"
+                "SourceCopyExporter.swift",
+                "SourcePreviewPanel.swift"
             ],
             sources: [
                 "EditorModel.swift",
@@ -34,7 +35,8 @@ let package = Package(
                 "MarkdownTableInsertion.swift",
                 "TaskMarkerEdit.swift",
                 "SourceLineSelection.swift",
-                "SourceOutline.swift"
+                "SourceOutline.swift",
+                "SourcePreviewProjection.swift"
             ]
         ),
         .testTarget(
@@ -70,7 +72,8 @@ let package = Package(
                 "MarkdownTableInsertionTests.swift",
                 "TaskMarkerEditTests.swift",
                 "SourceLineSelectionTests.swift",
-                "SourceOutlineTests.swift"
+                "SourceOutlineTests.swift",
+                "SourcePreviewProjectionTests.swift"
             ]
         )
     ],
