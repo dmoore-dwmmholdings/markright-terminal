@@ -4,6 +4,7 @@ import UIKit
 @MainActor final class SourceTextView: UITextView {
     var focusesOnAttachment = true
     var allowsMarkdownInsertion = true
+    var allowsSourceLineSelection = false
     override func didMoveToWindow() {
         super.didMoveToWindow()
         guard window != nil && focusesOnAttachment else { return }
@@ -33,6 +34,26 @@ import UIKit
             guard let plan else { return }
             self?.applyMarkdownInsertion(plan)
         }
+    }
+
+    func makeSourceLineSelectionAction() -> UIAction {
+        let available = allowsSourceLineSelection && window != nil && isFirstResponder && isEditable &&
+            markedTextRange == nil && selectedRanges.count == 1
+        let plan = available ? SourceLineSelection.make(source: text, selection: selectedRange) : nil
+        return UIAction(title: SourceLineSelection.title, attributes: plan == nil ? [.disabled] : []) { [weak self, plan] _ in
+            guard let plan else { return }
+            self?.applySourceLineSelection(plan)
+        }
+    }
+
+    /// Selection-only: no source edit, undo step or generation change.
+    @discardableResult func applySourceLineSelection(_ plan: SourceNavigationPlan) -> Bool {
+        guard allowsSourceLineSelection, window != nil, isFirstResponder, isEditable, markedTextRange == nil,
+              selectedRanges.count == 1, plan.matches(source: text, selection: selectedRange) else { return false }
+        selectedRange = plan.destination
+        scrollRangeToVisible(plan.destination)
+        (delegate as? NativeSourceEditor.Coordinator)?.report(self)
+        return selectedRange == plan.destination
     }
 
     @discardableResult func applyMarkdownInsertion(_ plan: MarkdownInsertionPlan) -> Bool {
@@ -103,6 +124,7 @@ struct NativeSourceEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let view = SourceTextView()
         view.allowsMarkdownInsertion = wholeDocument
+        view.allowsSourceLineSelection = wholeDocument
         view.font = UIFont.preferredFont(forTextStyle: .body)
         view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .secondarySystemBackground
@@ -124,6 +146,7 @@ struct NativeSourceEditor: UIViewRepresentable {
     func updateUIView(_ view: UITextView, context: Context) {
         context.coordinator.onChange = onChange
         (view as? SourceTextView)?.allowsMarkdownInsertion = wholeDocument
+        (view as? SourceTextView)?.allowsSourceLineSelection = wholeDocument
         Self.apply(value, selection: selection, to: view)
     }
     static func apply(_ value: String, selection: NSRange, to view: UITextView) {
@@ -167,7 +190,7 @@ struct NativeSourceEditor: UIViewRepresentable {
             guard source.allowsMarkdownInsertion else { return UIMenu(children: suggestedActions) }
             guard source.selectedRanges.count == 1,
                   range == source.selectedRange else { return nil }
-            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu(), source.makeTaskMarkerAction()])
+            return UIMenu(children: suggestedActions + [source.makeMarkdownMenu(), source.makeTaskMarkerAction(), source.makeSourceLineSelectionAction()])
         }
     }
 }

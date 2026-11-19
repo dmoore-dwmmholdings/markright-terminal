@@ -6,6 +6,8 @@ Standalone SwiftUI window around the existing synthetic desktop CodeMirror fixtu
 
 The local MRK-50 task-marker candidate adds **Toggle task markers** for a caret row or whole-row selection. Undo restores the exact source bytes and selection; the AppKit task-marker checks pass. [Behavior and verification](../../docs/native-task-marker-validation.md).
 
+The local MRK-52 candidate adds **Select source lines** to the native context menu. It changes only the selection; the AppKit source-line checks pass. [Behavior and verification](../../docs/native-source-line-selection-validation.md).
+
 The separate native workspace can be checked without opening the visible research app:
 
 ```sh

@@ -10,6 +10,10 @@ MRK-39 extracts `EditorModel` unchanged into a Foundation/Observation source sha
 
 MRK-50 adds an explicit **Toggle task markers** source action for the caret row or selected whole physical rows. It preserves BOM/Unicode/endings and original selection offsets, with bounded atomic syntax refusal and stale/scope/composition guards. UIKit uses its native insertion/undo path for an expanded caret-row replacement, and undo restores the exact source bytes and original selection. The iOS test bundle builds; the attached simulator tests have not run yet. See [behavior and verification](../../docs/native-task-marker-validation.md).
 
+## Native source-line selection candidate
+
+MRK-52 adds **Select source lines** to whole-document edit menus. It expands the touched physical rows with their endings and excludes the initial BOM. It changes only the selection: source, undo and autosave stay unchanged. The iOS test bundle builds. See [behavior and verification](../../docs/native-source-line-selection-validation.md).
+
 ## Native table source checkpoint
 
 MRK-45 adds **Table** to the whole-document Source menu: create a two-column starter on an empty row or convert a selected rectangular tab-separated grid, then edit the selected first data cell. Supported cell text and original row endings remain literal; ragged/unsupported grids are refused. No pasteboard/file import, grid UI, escaping or complete rendering is added.
